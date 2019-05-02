@@ -1,0 +1,97 @@
+import cv2
+import numpy as np
+import glob
+import os
+import matplotlib.pyplot as plt
+
+#Enter your path here
+path_='D:\\acquisitions\\2019-04-05\\aidan_orignal_2_slap\\1_1.ExtraInfo\\Cam1Undistorted';
+path=path_.replace('\\','/');
+path_OF_=path+'\\OF_dense_pics'
+path_OF=path_OF_.replace('\\','/');
+try:
+    os.mkdir(path_OF)
+except OSError:
+    print ("Creation of the directory %s failed" % path_OF)
+else:
+    print ("Successfully created the directory %s " % path_OF)
+
+image_list=[];
+for f in glob.glob(path+'/*.png'):
+    image_list.append(f.replace('\\','/'))
+if len(image_list)==0:
+    for f in glob.glob(path + '/*.jpg'):
+        image_list.append(f.replace('\\', '/'))
+
+
+def dispOpticalFlow( Image,Flow,Divisor,name ):
+    #"Display image with a visualisation of a flow over the top. A divisor controls the density of the quiver plot."
+    PictureShape = np.shape(Image)
+    #determine number of quiver points there will be
+    Imax = int(PictureShape[0]/Divisor)
+    Jmax = int(PictureShape[1]/Divisor)
+    #create a blank mask, on which lines will be drawn.
+    mask = np.zeros_like(Image)
+    for i in range(1, Imax):
+        for j in range(1, Jmax):
+            X1 = (i)*Divisor
+            Y1 = (j)*Divisor
+            X2 = int(X1 + Flow[X1,Y1,1])
+            Y2 = int(Y1 + Flow[X1,Y1,0])
+            X2 = np.clip(X2, 0, PictureShape[0])
+            Y2 = np.clip(Y2, 0, PictureShape[1])
+            #add all the lines to the mask
+            mask = cv2.line(mask, (Y1,X1),(Y2,X2), [255, 255, 255], 1)
+    #superpose lines onto image
+    img = cv2.add(Image,mask)
+    #cv2.waitKey(0);
+    #print image
+    #cv2.imshow(name,img)
+    #cv2.waitKey(0);
+    return img
+
+frame1=cv2.imread(image_list[0]);
+prvs = cv2.cvtColor(frame1,cv2.COLOR_BGR2GRAY)
+hsv = np.zeros_like(frame1)
+
+hsv[...,1] = 255
+count=0
+j=1;
+for k in range(len(image_list)-1):
+    #getting flow vectors for a frame
+    frame2 = cv2.imread(image_list[j])
+    next = cv2.cvtColor(frame2,cv2.COLOR_BGR2GRAY)
+    flow = cv2.calcOpticalFlowFarneback(prvs,next,None, 0.5, 3, 15, 3, 10, 1.2, 0)
+
+    #saving each flow in .txt file
+    print(flow.shape);
+    file=open(path_OF+'\\'+str(j)+'.txt','w');
+    flow.tofile(file,sep=" ",format="%s");
+    file.close();
+
+    #saving .png with optical flow vectors
+    image_vector=dispOpticalFlow(frame2,flow,10,"image")
+    plt.imshow(image_vector)
+    plt.savefig(path_OF+"\\"+str(j)+'.png')
+
+    #creating a mask using optical flow vectors
+    mask_value=1;
+    flow_x=flow[:,:,0];
+    flow_y=flow[:,:,1];
+    mask_binary_x=(flow_x>=mask_value);
+    mask_binary_y=(flow_y>=mask_value);
+    mask=np.logical_or(mask_binary_x,mask_binary_y);
+    indx=(mask==1);
+    final=np.zeros_like(frame2)
+    final[indx]=frame2[indx]
+
+    #saving .png with masked values
+    cv2.imwrite(path_OF+'//'+'masked'+str(j)+'.png',final)
+
+    j=j+1;
+    prvs=next;
+
+
+
+
+cv2.destroyAllWindows()
