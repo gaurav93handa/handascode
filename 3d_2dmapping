@@ -1,0 +1,59 @@
+import cv2
+import numpy as np
+import glob
+import os
+import matplotlib.pyplot as plt
+
+path_='D:\\acquisitions\\2019-04-05\\aidan_orignal_1_slap\\2.Reconstruction\\00000_simple.epts';
+path=path_.replace('\\','/');
+path_OF_='D:\\acquisitions\\2019-04-05\\aidan_orignal_1_slap\\2.Reconstruction\\3d_2dmap.txt'
+path_OF=path_OF_.replace('\\','/');
+
+#Getting point_array
+points_list=[]
+file=open(path,'r')
+file_d=open(path_OF,"w+")
+i=0
+for f in file:
+    str1=f.replace('v ','').replace(' ',',').split(',')
+    #print(str1)
+    points_list.append(str1)
+    file_d.write(str(str1))
+    i=i+1;
+file.close()
+file_d.close()
+point_array=np.float32(points_list)
+print(point_array.shape)
+print("N="+str(i))
+
+#Getting tvec
+tvec_list=[2.5794642316961607, 0.7971273878581733, 5.93710627897106];
+tvec=np.array(tvec_list)
+
+#Getting rvec
+rvec_list=[[-0.09913871792364284, 0.9773899076687221, -0.1867631735535238],
+       [0.9920826034304954, 0.08254279262523136, -0.09465091312924001],
+       [-0.07709489333948955, -0.1946680656218563, -0.9778347108013795]]
+rvec=np.array(rvec_list)
+
+#cameraMatrix
+camera_matrix_list=[[232079.96576982597, 0.0, -1.7598397423297],
+       [0.0, -232079.96576982597, 27.7036200257538],
+       [0.0, 0.0, 1.0]]
+camera_matrix=np.array(camera_matrix_list)
+
+#image_array
+
+imagePoints=[]
+result,jacobin=cv2.projectPoints(point_array, rvec, tvec, camera_matrix,None)
+print(result)
+result_final=np.array(result)
+print(result_final.shape)
+x=result_final[:,:,0]
+y=result_final[:,:,1]
+plt.plot(x,y)
+plt.show()
+
+file_new=open('D:/acquisitions/2019-04-05/aidan_orignal_1_slap/2.Reconstruction/map.txt','w+')
+file_new.write(str(result_final))
+file_new.close()
