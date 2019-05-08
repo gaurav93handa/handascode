@@ -4,8 +4,7 @@ import glob
 import os
 import matplotlib.pyplot as plt
 
-#Enter your path here
-path_='D:\\acquisitions\\2019-04-05\\aidan_orignal_2_slap\\1_1.ExtraInfo\\Cam1Undistorted';
+path_='D:\\acquisitions\\2019-04-05\\aidan_orignal_1_slap\\1_1.ExtraInfo\\Cam1Undistorted';
 path=path_.replace('\\','/');
 path_OF_=path+'\\OF_dense_pics'
 path_OF=path_OF_.replace('\\','/');
@@ -53,45 +52,86 @@ def dispOpticalFlow( Image,Flow,Divisor,name ):
 frame1=cv2.imread(image_list[0]);
 prvs = cv2.cvtColor(frame1,cv2.COLOR_BGR2GRAY)
 hsv = np.zeros_like(frame1)
-
 hsv[...,1] = 255
+
+flow_list=[]
 count=0
 j=1;
-for k in range(len(image_list)-1):
+for k in range(0,len(image_list)-1):
     #getting flow vectors for a frame
-    frame2 = cv2.imread(image_list[j])
-    next = cv2.cvtColor(frame2,cv2.COLOR_BGR2GRAY)
-    flow = cv2.calcOpticalFlowFarneback(prvs,next,None, 0.5, 3, 15, 3, 10, 1.2, 0)
+    frame2 = cv2.imread(image_list[j]);
+    next = cv2.cvtColor(frame2,cv2.COLOR_BGR2GRAY);
+    flow_z=np.zeros_like(next)
+    flow=cv2.calcOpticalFlowFarneback(prvs,next,flow_z,0.5, 2, 15, 3, 10, 1.2, 0);
+    flow_x = flow[:, :, 0];
+    flow_y = flow[:, :, 1];
+    flow_normal = np.sqrt(np.square(flow_x) + np.square(flow_y));
+    flow_list.append(flow_normal);
 
-    #saving each flow in .txt file
-    print(flow.shape);
+    """#saving each flow in .txt file
     file=open(path_OF+'\\'+str(j)+'.txt','w');
-    flow.tofile(file,sep=" ",format="%s");
+    flow.tofile(file,sep=",",format="%s");
     file.close();
+    """
 
-    #saving .png with optical flow vectors
-    image_vector=dispOpticalFlow(frame2,flow,10,"image")
-    plt.imshow(image_vector)
-    plt.savefig(path_OF+"\\"+str(j)+'.png')
+    #Creating HSV
+    mag, ang = cv2.cartToPolar(flow[..., 0], flow[..., 1])
+    hsv[..., 0] = ang * 180 / np.pi / 2
+    hsv[..., 2] = cv2.normalize(mag, None, 0, 255, cv2.NORM_MINMAX)
+    bgr = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+    cv2.imwrite(path_OF+'\\'+'opticalfb'+str(j)+'.png', frame2)
+    cv2.imwrite(path_OF+'\\'+'opticalhsv'+str(j)+'.png', bgr)
 
-    #creating a mask using optical flow vectors
-    mask_value=1;
-    flow_x=flow[:,:,0];
-    flow_y=flow[:,:,1];
-    mask_binary_x=(flow_x>=mask_value);
-    mask_binary_y=(flow_y>=mask_value);
-    mask=np.logical_or(mask_binary_x,mask_binary_y);
-    indx=(mask==1);
-    final=np.zeros_like(frame2)
-    final[indx]=frame2[indx]
 
-    #saving .png with masked values
-    cv2.imwrite(path_OF+'//'+'masked'+str(j)+'.png',final)
+
 
     j=j+1;
-    prvs=next;
+    prvs = next;
 
+flow_new=[]
+for k in range(0,len(flow_list)-1):
+    a=flow_list[k];
+    b=flow_list[k+1];
+    indx1=(a>1)
+    indx2=(b>1)
+    indx3=np.logical_and(indx1,indx2)
+    flow_latest=np.zeros_like(flow_list[0])
+    flow_list_=flow_list[k]
+    flow_latest[indx3]=flow_list_[indx3]
+    flow_new.append(flow_latest)
 
+j=1
+for h in range(0,len(flow_new)):
+    # saving .png with optical flow vectors
+    flow_a=flow_new[h]
+    indx=(flow_a>1)
+    prvs=cv2.imread(image_list[j])
+    final = np.zeros_like(frame2)
+    final[indx] = prvs[indx]
+    cv2.imwrite(path_OF + '//' + 'masked' + str(j) + '.png', final);
+    j=j+1;
 
+"""
+flow_a=flow_list[0]
+flow_b=flow_new[0]
+indx1=(flow_b>1)
+flow_c=np.zeros_like(flow_list[0])
+flow_c[np.logical_not(indx1)]=flow_a[np.logical_not(indx1)]
+indx=(flow_c>1)
+prvs=cv2.imread(image_list[0])
+final = np.zeros_like(frame2)
+final[indx] = prvs[indx]
+cv2.imwrite(path_OF + '//' + 'masked' + str(0) + '.png', final);
+"""
+flow_a=flow_list[len(flow_list)-1]
+flow_b=flow_new[len(flow_new)-1]
+indx1=(flow_b>1)
+flow_c=np.zeros_like(flow_list[0])
+flow_c[np.logical_not(indx1)]=flow_a[np.logical_not(indx1)]
+indx=(flow_c>1)
+prvs=cv2.imread(image_list[len(image_list)-1])
+final = np.zeros_like(frame2)
+final[indx] = prvs[indx]
+cv2.imwrite(path_OF + '//' + 'masked' + str(len(image_list)-1) + '.png', final);
 
 cv2.destroyAllWindows()
