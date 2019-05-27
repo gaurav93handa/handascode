@@ -1,0 +1,44 @@
+import cv2
+import numpy as np
+
+path_mask1="D:/Gaurav/Gaurav_processed/2019-04-05/aidan_orignal_1_slap/2.Reconstruction/masked2cam1.png";
+path_mask2="D:/Gaurav/Gaurav_processed/2019-04-05/aidan_orignal_1_slap/2.Reconstruction/masked2cam2.png";
+img_c_mask1=cv2.imread(path_mask1);
+img_c_mask2=cv2.imread(path_mask2);
+img_mask1=cv2.cvtColor(img_c_mask1,cv2.COLOR_BGR2GRAY)
+img_mask2=cv2.cvtColor(img_c_mask2,cv2.COLOR_BGR2GRAY)
+
+image_1_binary__=(img_mask1!=0);
+image_1_binary_=np.array(image_1_binary__);
+
+image_2_binary__=(img_mask2!=0);
+image_2_binary_=np.array(image_2_binary__);
+
+image_binary_=np.logical_or(image_1_binary_,image_2_binary_)
+image_binary=image_binary_.astype(int);
+index=np.argwhere(image_binary==1)
+print(index.shape)
+file_new=open('D:/Gaurav/Gaurav_processed/2019-04-05/aidan_orignal_1_slap/2.Reconstruction/mask_union.txt','w+')
+for i in range(0,len(index)):
+    file_new.write("%d,%d\n" %(index[i][0],index[i][1]))
+file_new.close()
+
+path_map="D:/Gaurav/Gaurav_processed/2019-04-05/aidan_orignal_1_slap/2.Reconstruction/3d_2d_points.txt"
+data=np.loadtxt(path_map,delimiter=',')
+print(data.shape)
+
+path_prune="D:/Gaurav/Gaurav_processed/2019-04-05/aidan_orignal_1_slap/2.Reconstruction/prune_points.txt"
+file_prune=open(path_prune,"w+")
+pruned_list=[]
+for i in range(0,5000):
+    for j in range(0,5000):
+        if (index[i][0]==data[j][3]  and index[i][1]==data[j][4]):
+            pruned_list.append("v %f %f %f"%(data[j][0],data[j][1],data[j][2]))
+            file_prune.write("v %f %f %f"%(data[j][0],data[j][1],data[j][2]))
+file_prune.close();
+print(len(pruned_list));
+
+
+
+
+
