@@ -1,6 +1,8 @@
 import cv2
 import numpy as np
 
+#path_mask1="D:/Gaurav/Gaurav_processed/2019-04-05/aidan_orignal_1_slap/2.Reconstruction/masked2cam1.png";
+#path_mask2="D:/Gaurav/Gaurav_processed/2019-04-05/aidan_orignal_1_slap/2.Reconstruction/masked2cam2.png";
 path_mask1="D:/Gaurav/Gaurav_processed/2019-04-05/aidan_orignal_1_slap/2.Reconstruction/masked2cam1.png";
 path_mask2="D:/Gaurav/Gaurav_processed/2019-04-05/aidan_orignal_1_slap/2.Reconstruction/masked2cam2.png";
 img_c_mask1=cv2.imread(path_mask1);
@@ -18,21 +20,23 @@ image_binary_=np.logical_or(image_1_binary_,image_2_binary_)
 image_binary=image_binary_.astype(int);
 index=np.argwhere(image_binary==1)
 print(index.shape)
-file_new=open('D:/Gaurav/Gaurav_processed/2019-04-05/aidan_orignal_1_slap/2.Reconstruction/mask_union.txt','w+')
+file_new=open('C:/Users/umroot/Desktop/sandbox/mask_union.txt','w+')
 for i in range(0,len(index)):
     file_new.write("%d,%d\n" %(index[i][0],index[i][1]))
 file_new.close()
 
-path_map="D:/Gaurav/Gaurav_processed/2019-04-05/aidan_orignal_1_slap/2.Reconstruction/3d_2d_points.txt"
-data=np.loadtxt(path_map,delimiter=',')
+path_map="C:/Users/umroot/Desktop/sandbox/3d_2d_points.txt"
+data=np.loadtxt(path_map,dtype='int',delimiter=',')
 print(data.shape)
 
-path_prune="D:/Gaurav/Gaurav_processed/2019-04-05/aidan_orignal_1_slap/2.Reconstruction/prune_points.txt"
+path_prune="C:/Users/umroot/Desktop/sandbox//prune_points.txt"
 file_prune=open(path_prune,"w+")
 pruned_list=[]
-for i in range(0,5000):
-    for j in range(0,5000):
-        if (index[i][0]==data[j][3]  and index[i][1]==data[j][4]):
+for i in range(0,len(index)):
+    for j in range(0,len(data)):
+        print(index[i][0],data[j][3])
+        print(index[i][1],data[j][4])
+        if index[i][0]==data[j][3]  and index[i][1]==data[j][4]:
             pruned_list.append("v %f %f %f"%(data[j][0],data[j][1],data[j][2]))
             file_prune.write("v %f %f %f"%(data[j][0],data[j][1],data[j][2]))
 file_prune.close();
