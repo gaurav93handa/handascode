@@ -5,10 +5,10 @@ import os
 import matplotlib.pyplot as plt
 
 #path_='D:\\Gaurav\\Gaurav_processed\\2019-04-05\\aidan_orignal_1_slap\\2.Reconstruction\\00002_simple.epts';
-path_="C:\\Users\\umroot\\Desktop\\sandbox\\marker_one.txt"
+path_="C:\\Users\\abc\\Desktop\\PCLProject\\testing\\sandbox\\marker_one.txt"
 path=path_.replace('\\','/');
 #path_OF_='D:\\Gaurav\\Gaurav_processed\\2019-04-05\\aidan_orignal_1_slap\\2.Reconstruction\\3d_2dmap.txt'
-path_OF_="C:\\Users\\umroot\\Desktop\\sandbox\\3d_2d_map.txt"
+path_OF_="C:\\Users\\abc\\Desktop\\PCLProject\\testing\\sandbox\\3d_2d_map.txt"
 path_OF=path_OF_.replace('\\','/');
 
 #Getting point_array
@@ -52,8 +52,8 @@ camera_matrix_list=[[232079.96576982597, 0.0, -1.7598397423297],
        [0.0, -232079.96576982597, 27.7036200257538],
        [0.0, 0.0, 1.0]]
 """
-camera_matrix_list=[[1462.94220896788, 0.0, 336+5.80941470653381],
-       [0.0, -1462.94220896788, 304+4.45035581260192],
+camera_matrix_list=[[1462.94220896788, 0.0, 336+6],
+       [0.0, -1462.94220896788, 304+5],
        [0.0, 0.0, 1.0]]
 camera_matrix=np.array(camera_matrix_list)
 print(camera_matrix.shape)
@@ -78,12 +78,12 @@ pixcel_x=np.array(pixcel_x_)
 pixcel_y=np.array(pixcel_y_)
 print(pixcel_x.shape)
 print(pixcel_y.shape)
-
+""""
 file_new=open('D:/Gaurav/Gaurav_processed/2019-04-05/aidan_orignal_1_slap/2.Reconstruction/non_api.txt','w+')
 for i in range(0,len(point_array)):
     file_new.write("%d,%d\n" %(pixcel_x[i],pixcel_y[i]))
 file_new.close()
-
+"""
 
 
 
@@ -95,8 +95,8 @@ print(np.min(x),np.max(x))
 y=result_final[:,:,1]
 print(np.min(y),np.max(y))
 print(x.shape)
-file_new=open('C:/Users/umroot/Desktop/sandbox/api.txt','w+')
-file_new_2=open('C:/Users/umroot/Desktop/sandbox/3d_2d_points.txt','w+')
+file_new=open('C:/Users/abc/Desktop/PCLProject/testing/sandbox/api.txt','w+')
+file_new_2=open('C:/Users/abc/Desktop/PCLProject/testing/sandbox/3d_2d_points.txt','w+')
 for i in range(0,len(x)):
     file_new.write("%d,%d\n" %(x[i],y[i]))
     file_new_2.write("%f,%f,%f,%d,%d\n"%(point_array[i][0],point_array[i][1],point_array[i][2],x[i],y[i]))
@@ -113,6 +113,11 @@ print(pixcel_x.shape)
 print(pruned_x.shape)
 #plt.plot(pruned_x,pruned_y,'bo')
 
-plt.plot(pixcel_x,pixcel_y,'bo')
-
+img=cv2.imread("C:/Users/abc/Desktop/PCLProject/testing/sandbox/cam1.png")
+ax=plt.gca()                            # get the axis
+#ax.xaxis.tick_bottom()                     # and move the X-Axis
+#ax.yaxis.tick_left()
+#ax.xaxis_inverted()
+plt.imshow(img)
+plt.plot(672-pixcel_x,pixcel_y,'bo')
 plt.show();
