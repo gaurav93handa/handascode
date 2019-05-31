@@ -41,19 +41,19 @@ rvec_list=[[-0.09913871792364284, 0.9773899076687221, -0.1867631735535238],
        [-0.07709489333948955, -0.1946680656218563, -0.9778347108013795]]
 """
 rvec_list=[[1.0, 0.0, 0.0],
-       [0.0,1.0, 0.0],
-       [0.0, 0.0, 1.0]]
+       [0.0,-1.0, 0.0],
+       [0.0, 0.0, -1.0]]
 rvec=np.array(rvec_list)
 print(rvec.shape)
 
 #cameraMatrix
 """"
-camera_matrix_list=[[232079.96576982597, 0.0, -1.7598397423297],
+camera_matrix_list=[[232079.96, 0.0, -1.7598397423297],
        [0.0, -232079.96576982597, 27.7036200257538],
        [0.0, 0.0, 1.0]]
 """
 camera_matrix_list=[[1462.94220896788, 0.0, 336+6],
-       [0.0, -1462.94220896788, 304+5],
+       [0.0, 1462.94220896788, 304+5],
        [0.0, 0.0, 1.0]]
 camera_matrix=np.array(camera_matrix_list)
 print(camera_matrix.shape)
@@ -78,12 +78,11 @@ pixcel_x=np.array(pixcel_x_)
 pixcel_y=np.array(pixcel_y_)
 print(pixcel_x.shape)
 print(pixcel_y.shape)
-""""
-file_new=open('D:/Gaurav/Gaurav_processed/2019-04-05/aidan_orignal_1_slap/2.Reconstruction/non_api.txt','w+')
+file_new=open('C:/Users/abc/Desktop/PCLProject/testing/sandbox/non_api.txt','w+')
 for i in range(0,len(point_array)):
     file_new.write("%d,%d\n" %(pixcel_x[i],pixcel_y[i]))
 file_new.close()
-"""
+
 
 
 
@@ -118,6 +117,7 @@ ax=plt.gca()                            # get the axis
 #ax.xaxis.tick_bottom()                     # and move the X-Axis
 #ax.yaxis.tick_left()
 #ax.xaxis_inverted()
+ax.yaxis_inverted()
 plt.imshow(img)
-plt.plot(672-pixcel_x,pixcel_y,'bo')
+plt.plot(pixcel_x,pixcel_y,'bo')
 plt.show();
