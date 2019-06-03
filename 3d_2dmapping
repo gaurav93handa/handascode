@@ -1,16 +1,26 @@
 import cv2
 import numpy as np
-import glob
-import os
 import matplotlib.pyplot as plt
+import math
 
-#path_='D:\\Gaurav\\Gaurav_processed\\2019-04-05\\aidan_orignal_1_slap\\2.Reconstruction\\00002_simple.epts';
-path_="C:\\Users\\abc\\Desktop\\PCLProject\\testing\\sandbox\\marker_one.txt"
+base_path="D:/acquisitions/2019-04-05/aidan_orignal_1_slap/pruning/test1"
+
+
+path_=base_path+"/pruned_3dpoints.txt"
 path=path_.replace('\\','/');
-#path_OF_='D:\\Gaurav\\Gaurav_processed\\2019-04-05\\aidan_orignal_1_slap\\2.Reconstruction\\3d_2dmap.txt'
-path_OF_="C:\\Users\\abc\\Desktop\\PCLProject\\testing\\sandbox\\3d_2d_map.txt"
+
+path_OF_=base_path+"/3d_2d_map.txt"
 path_OF=path_OF_.replace('\\','/');
 
+#transformation matrix
+"""""
+<transform>
+-9.9138717923643038e-002 9.7738990766872036e-001 -1.8676317355353050e-001 2.5794642316961607e+000
+9.9208260343049470e-001 8.2542792625229788e-002 -9.4650913129243439e-002 7.9712738785817328e-001
+-7.7094893339492432e-002 -1.9466806562186317e-001 -9.7783471080137785e-001 5.9371062789710596e+000
+0.0000000000000000e+000 0.0000000000000000e+000 0.0000000000000000e+000 1.0000000000000000e+000
+</transform>
+"""
 #Getting point_array
 points_list=[]
 file=open(path,'r')
@@ -26,16 +36,26 @@ file.close()
 file_d.close()
 point_array=np.float32(points_list)
 print(point_array.shape)
-print("N="+str(i))
+
 
 #Getting tvec
-#tvec_list=[2.5794642316961607, 0.7971273878581733, 5.93710627897106];
-tvec_list=[0.0, 0.0, 0.0];
+tvec_list=[2.5794642316961607, 0.7971273878581733, 5.93710627897106];
+#tvec_list=[0.0, 0.0, 0.0];
 tvec=np.array(tvec_list)
-print(tvec.shape)
+print(tvec)
 
 #Getting rvec
-""""
+r11=-0.09913871792364284
+r12=0.9773899076687221
+r13=-0.1867631735535238
+r21=0.9920826034304954
+r22=0.08254279262523136
+r23=-0.09465091312924001
+r31=-0.07709489333948955
+r32= -0.1946680656218563
+r33= -0.9778347108013795
+sx=math.sqrt(r11*r11+r21*r21+r31*r31)
+
 rvec_list=[[-0.09913871792364284, 0.9773899076687221, -0.1867631735535238],
        [0.9920826034304954, 0.08254279262523136, -0.09465091312924001],
        [-0.07709489333948955, -0.1946680656218563, -0.9778347108013795]]
@@ -43,18 +63,21 @@ rvec_list=[[-0.09913871792364284, 0.9773899076687221, -0.1867631735535238],
 rvec_list=[[1.0, 0.0, 0.0],
        [0.0,-1.0, 0.0],
        [0.0, 0.0, -1.0]]
+"""
 rvec=np.array(rvec_list)
-print(rvec.shape)
+
+print(rvec)
 
 #cameraMatrix
-""""
-camera_matrix_list=[[232079.96, 0.0, -1.7598397423297],
-       [0.0, -232079.96576982597, 27.7036200257538],
+camera_matrix_list=[[1359.98859941118, 0.0, 336],
+       [0.0, 1359.98859941118,304],
        [0.0, 0.0, 1.0]]
 """
+sandbox good points test
 camera_matrix_list=[[1462.94220896788, 0.0, 336+6],
        [0.0, 1462.94220896788, 304+5],
        [0.0, 0.0, 1.0]]
+"""
 camera_matrix=np.array(camera_matrix_list)
 print(camera_matrix.shape)
 
@@ -67,18 +90,17 @@ for i in range(0,len(point_array)):
     points=np.matmul(camera_matrix,(np.matmul(rvec,np.transpose(point_array[i]))+tvec))
     imagePoints.append(points)
 image_points=np.array(imagePoints)
-print(image_points.shape)
+
 
 pixcel_x_=[]
 pixcel_y_=[]
 for i in range(0,len(point_array)):
-    pixcel_x_.append(image_points[i][0]/image_points[i][2])
-    pixcel_y_.append(image_points[i][1]/image_points[i][2])
+    pixcel_x_.append((image_points[i][0]/image_points[i][2])/1)
+    pixcel_y_.append((image_points[i][1]/image_points[i][2])/1)
 pixcel_x=np.array(pixcel_x_)
 pixcel_y=np.array(pixcel_y_)
-print(pixcel_x.shape)
-print(pixcel_y.shape)
-file_new=open('C:/Users/abc/Desktop/PCLProject/testing/sandbox/non_api.txt','w+')
+
+file_new=open(base_path+'/non_api.txt','w+')
 for i in range(0,len(point_array)):
     file_new.write("%d,%d\n" %(pixcel_x[i],pixcel_y[i]))
 file_new.close()
@@ -90,12 +112,11 @@ file_new.close()
 result,jacobin=cv2.projectPoints(point_array, rvec, tvec, camera_matrix,None)
 result_final=np.array(result)
 x=result_final[:,:,0]
-print(np.min(x),np.max(x))
+
 y=result_final[:,:,1]
-print(np.min(y),np.max(y))
-print(x.shape)
-file_new=open('C:/Users/abc/Desktop/PCLProject/testing/sandbox/api.txt','w+')
-file_new_2=open('C:/Users/abc/Desktop/PCLProject/testing/sandbox/3d_2d_points.txt','w+')
+
+file_new=open(base_path+'/api.txt','w+')
+file_new_2=open(base_path+'/3d_2d_points.txt','w+')
 for i in range(0,len(x)):
     file_new.write("%d,%d\n" %(x[i],y[i]))
     file_new_2.write("%f,%f,%f,%d,%d\n"%(point_array[i][0],point_array[i][1],point_array[i][2],x[i],y[i]))
@@ -108,11 +129,10 @@ pruned_x=pixcel_x*pruned_x_
 pruned_y__=np.logical_and(pixcel_y>=0,pixcel_y<=700)
 pruned_y_=pruned_y__.astype(int)
 pruned_y=pixcel_y*pruned_y_
-print(pixcel_x.shape)
-print(pruned_x.shape)
+
 #plt.plot(pruned_x,pruned_y,'bo')
 
-img=cv2.imread("C:/Users/abc/Desktop/PCLProject/testing/sandbox/cam1.png")
+img=cv2.imread(base_path+"/00000.jpg")
 ax=plt.gca()                            # get the axis
 #ax.xaxis.tick_bottom()                     # and move the X-Axis
 #ax.yaxis.tick_left()
