@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 
-base_path="D:/acquisitions/2019-04-05/aidan_orignal_1_slap/pruning/test1"
+base_path="D:/Gaurav/Gaurav_processed/testing/3d_mapping/with_calibration/vicon_slap_shot_1/cam2"
 
 
 path_=base_path+"/pruned_3dpoints.txt"
@@ -15,11 +15,12 @@ path_OF=path_OF_.replace('\\','/');
 #transformation matrix
 """""
 <transform>
--9.9138717923643038e-002 9.7738990766872036e-001 -1.8676317355353050e-001 2.5794642316961607e+000
-9.9208260343049470e-001 8.2542792625229788e-002 -9.4650913129243439e-002 7.9712738785817328e-001
--7.7094893339492432e-002 -1.9466806562186317e-001 -9.7783471080137785e-001 5.9371062789710596e+000
+9.9338013211135090e-001 -2.9805702560414815e-002 1.1093932225011688e-001 -1.5028065299914068e+000
+-2.9203840559915518e-002 -9.9954863937142346e-001 -7.0465046148544758e-003 -1.4643738600859262e-002
+1.1109927462853314e-001 3.7600034064098819e-003 -9.9380220041585621e-001 -8.4709483083215700e-002
 0.0000000000000000e+000 0.0000000000000000e+000 0.0000000000000000e+000 1.0000000000000000e+000
 </transform>
+
 """
 #Getting point_array
 points_list=[]
@@ -39,7 +40,7 @@ print(point_array.shape)
 
 
 #Getting tvec
-tvec_list=[2.5794642316961607, 0.7971273878581733, 5.93710627897106];
+tvec_list=[-1.5028065299914,-0.014643738600859,-0.084709483083215];
 #tvec_list=[0.0, 0.0, 0.0];
 tvec=np.array(tvec_list)
 print(tvec)
@@ -55,10 +56,19 @@ r31=-0.07709489333948955
 r32= -0.1946680656218563
 r33= -0.9778347108013795
 sx=math.sqrt(r11*r11+r21*r21+r31*r31)
+"""""
+<transform>
+9.9338013211135090e-001 -2.9805702560414815e-002 1.1093932225011688e-001 -1.5028065299914068e+000
+-2.9203840559915518e-002 -9.9954863937142346e-001 -7.0465046148544758e-003 -1.4643738600859262e-002
+1.1109927462853314e-001 3.7600034064098819e-003 -9.9380220041585621e-001 -8.4709483083215700e-002
+0.0000000000000000e+000 0.0000000000000000e+000 0.0000000000000000e+000 1.0000000000000000e+000
+</transform>
 
-rvec_list=[[-0.09913871792364284, 0.9773899076687221, -0.1867631735535238],
-       [0.9920826034304954, 0.08254279262523136, -0.09465091312924001],
-       [-0.07709489333948955, -0.1946680656218563, -0.9778347108013795]]
+"""
+
+rvec_list=[[0.99338013211135090,-0.029805702560414815,0.11093932225011688],
+       [-0.029203840559915518,-0.99954863937142346,-0.0070465046148544758],
+       [0.11109927462853314,0.0037600034064098819,-0.99380220041585621]]
 """
 rvec_list=[[1.0, 0.0, 0.0],
        [0.0,-1.0, 0.0],
@@ -69,8 +79,8 @@ rvec=np.array(rvec_list)
 print(rvec)
 
 #cameraMatrix
-camera_matrix_list=[[1359.98859941118, 0.0, 336],
-       [0.0, 1359.98859941118,304],
+camera_matrix_list=[[1408.9971650981, 0.0, 336-42],
+       [0.0, 1408.9971650981,304-67],
        [0.0, 0.0, 1.0]]
 """
 sandbox good points test
@@ -95,8 +105,8 @@ image_points=np.array(imagePoints)
 pixcel_x_=[]
 pixcel_y_=[]
 for i in range(0,len(point_array)):
-    pixcel_x_.append((image_points[i][0]/image_points[i][2])/1)
-    pixcel_y_.append((image_points[i][1]/image_points[i][2])/1)
+    pixcel_x_.append((image_points[i][0]/image_points[i][2]))
+    pixcel_y_.append((image_points[i][1]/image_points[i][2]))
 pixcel_x=np.array(pixcel_x_)
 pixcel_y=np.array(pixcel_y_)
 
@@ -132,7 +142,7 @@ pruned_y=pixcel_y*pruned_y_
 
 #plt.plot(pruned_x,pruned_y,'bo')
 
-img=cv2.imread(base_path+"/00000.jpg")
+img=cv2.imread(base_path+"/cam2.png")
 ax=plt.gca()                            # get the axis
 #ax.xaxis.tick_bottom()                     # and move the X-Axis
 #ax.yaxis.tick_left()
