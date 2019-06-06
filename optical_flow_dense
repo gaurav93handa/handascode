@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 
 #Set the path and create Directory "OF_dense_pics"
-path_='D:\\Gaurav\\Gaurav_processed\\2019-04-05\\aidan_orignal_1_slap\\1_1.ExtraInfo\\Cam1Undistorted';
+path_=r'D:\Gaurav\Gaurav_processed\2019-04-05\aidan_orignal_2_slap\1.WorkImages\Cam1';
 path=path_.replace('\\','/');
 path_OF_=path+'\\OF_dense_pics'
 path_OF=path_OF_.replace('\\','/');
@@ -26,32 +26,6 @@ if len(image_list)==0:
     for f in glob.glob(path + '/*.jpg'):
         image_list.append(f.replace('\\', '/'))
 
-#Draw vector representation on images
-def dispOpticalFlow( Image,Flow,Divisor,name ):
-    #"Display image with a visualisation of a flow over the top. A divisor controls the density of the quiver plot."
-    PictureShape = np.shape(Image)
-    #determine number of quiver points there will be
-    Imax = int(PictureShape[0]/Divisor)
-    Jmax = int(PictureShape[1]/Divisor)
-    #create a blank mask, on which lines will be drawn.
-    mask = np.zeros_like(Image)
-    for i in range(1, Imax):
-        for j in range(1, Jmax):
-            X1 = (i)*Divisor
-            Y1 = (j)*Divisor
-            X2 = int(X1 + Flow[X1,Y1,1])
-            Y2 = int(Y1 + Flow[X1,Y1,0])
-            X2 = np.clip(X2, 0, PictureShape[0])
-            Y2 = np.clip(Y2, 0, PictureShape[1])
-            #add all the lines to the mask
-            mask = cv2.line(mask, (Y1,X1),(Y2,X2), [255, 255, 255], 1)
-    #superpose lines onto image
-    img = cv2.add(Image,mask)
-    #cv2.waitKey(0);
-    #print image
-    #cv2.imshow(name,img)
-    #cv2.waitKey(0);
-    return img
 
 #Increase pixcels
 def add_pixcels(image,layer):
@@ -67,7 +41,6 @@ def add_pixcels(image,layer):
     for i in range(0,num_pixcel):
         for j in range(1,layer):
             if (index[i,0]-j>= 0 and index[i,0]+j>= 0 and index[i,0]-j < image_binary.shape[0] and index[i,0]+j < image_binary.shape[0] and index[i,1]-j>= 0 and index[i,1]+j>= 0 and index[i,1]-j < image_binary.shape[1] and index[i,1]+j < image_binary.shape[1]):
-                print(index[i,0]-j,index[i,1]-j)
                 image_binary[index[i,0]-j,index[i,1]-j] = 1;
                 image_binary[index[i,0]+j,index[i,1]+j] = 1;
                 image_binary[index[i,0]+j,index[i,1]-j] = 1;
@@ -92,12 +65,12 @@ prvs = cv2.cvtColor(frame1,cv2.COLOR_BGR2GRAY)
 flow_x_list=[]
 flow_y_list=[]
 flow_normal=[]
-for k in range(0,len(image_list)-1):
+for k in range(1,len(image_list)):
     #getting flow vectors for a frame
-    frame2 = cv2.imread(image_list[k+1]);
+    frame2 = cv2.imread(image_list[k]);
     next = cv2.cvtColor(frame2,cv2.COLOR_BGR2GRAY);
     #flow=cv2.calcOpticalFlowFarneback(prvs,next,flow_z,0.5, 2, 15, 3, 10, 1.2, 0);
-    flow = cv2.calcOpticalFlowFarneback(prvs, next, None, 0.5, 20, 15, 3, 10, 1.2, 0);
+    flow = cv2.calcOpticalFlowFarneback(prvs, next, None, 0.5, 2, 15, 3, 10, 1.2, 0);
     flow_x = flow[:, :, 0];
     flow_x_list.append(flow_x);
     flow_y = flow[:, :, 1];
@@ -106,14 +79,7 @@ for k in range(0,len(image_list)-1):
     flow_normal.append(flow_normal_);
     prvs = next;
 
-    """
-    #saving each flow in .txt file
-    file=open(path_OF+'\\'+str(j)+'.txt','w');
-    flow.tofile(file,sep=",",format="%s");
-    file.close();
-    """
-
-
+"""
 #Save HSV for each optical flow
 hsv = np.zeros_like(frame1)
 for i in range(0,len(flow_x_list)):
@@ -124,74 +90,43 @@ for i in range(0,len(flow_x_list)):
     #hsv = np.asarray(hsv, dtype=np.float32)
     bgr = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
     cv2.imwrite(path_OF + '\\' + 'opticalhsv' + str(i) + '.png', bgr)
-
+"""
 #saving masked images
-jj=0
 fgbg = cv2.createBackgroundSubtractorMOG2()
+fgbg2 = cv2.createBackgroundSubtractorKNN()
+indx = np.ones([608,672])
+for h in range(0,len(image_list)):
+    indx = np.ones([608, 672])
+    if h!=len(image_list)-1:
+        flow_a=cv2.normalize(flow_normal[h],None,0,1,cv2.NORM_MINMAX);
+        indx = (flow_a > 0.05);
 
-def back_sub(image):
-    img=fgbg.apply(image1);
-    return img;
-
-
-for h in range(0,len(flow_normal)):
-    # saving .png with optical flow vectors
-    flow_a=cv2.normalize(flow_normal[h],None,0,1,cv2.NORM_MINMAX);
     final_ = np.zeros_like(frame2)
     final = np.zeros_like(frame2)
-    indx=(flow_a>0.1)
-    image1=cv2.imread(image_list[jj])
-    fgmask=back_sub(image1)
-    #fgmask = fgbg.apply(image1)
+
+    image1=cv2.imread(image_list[h])
+    fgmask = fgbg.apply(image1)
+    fgmask2= fgbg2.apply(image1)
     ind=(fgmask>10)
-    final_index=np.logical_and(ind,indx)
+    ind2=(fgmask2>0)
+    final_index=np.logical_and(indx,ind)
+    final_index = np.logical_and(final_index, ind2)
     final_[final_index]=image1[final_index]
     binary_mask=add_pixcels(final_,2);
     final[binary_mask]=image1[binary_mask]
-    cv2.imwrite(path_OF + '//' + 'masked' + str(jj) + '.png', final);
-    jj=jj+1;
-    if (jj==len(flow_normal)-1):
-        image01 = cv2.imread(image_list[0])
-        finala = np.zeros_like(frame2)
-        fgmask = back_sub(image01)
-        ind = (fgmask > 10)
-        finala[ind] = image01[ind]
-        cv2.imwrite(path_OF + '//' + 'masked_test' + str(0) + '.png',finala );
+    cv2.imwrite(path_OF + '//' + 'masked' + str(h) + '.png', final);
 
-"""
-#Pre processing to remove the extra part
-flow_new=[]
-for k in range(0,len(flow_normal)-1):
-    a=flow_normal[k];
-    b=flow_normal[k+1];
-    indx1=(a>1)
-    indx2=(b>1)
-    indx3=np.logical_and(indx1,indx2)
-    flow_latest=np.zeros_like(flow_normal[0])
-    flow_list_=flow_normal[k]
-    flow_latest[indx3]=flow_list_[indx3]
-    flow_new.append(flow_latest)
-#Saving masked pics
-j=1
-for h in range(0,len(flow_new)):
-    # saving .png with optical flow vectors
-    flow_a=flow_new[h]
-    indx=(flow_a>1)
-    prvs=cv2.imread(image_list[j])
+mask2=cv2.createBackgroundSubtractorMOG2()
+for i in range(3,len(image_list)):
     final = np.zeros_like(frame2)
-    final[indx] = prvs[indx]
-    cv2.imwrite(path_OF + '//' + 'masked' + str(j) + '.png', final);
-    j=j+1;
-#saving first and last mask
-flow_a=flow_normal[len(flow_normal)-1]
-flow_b=flow_new[len(flow_new)-1]
-indx1=(flow_b>1)
-flow_c=np.zeros_like(flow_normal[0])
-flow_c[np.logical_not(indx1)]=flow_a[np.logical_not(indx1)]
-indx=(flow_c>1)
-prvs=cv2.imread(image_list[len(image_list)-1])
-final = np.zeros_like(frame2)
-final[indx] = prvs[indx]
-cv2.imwrite(path_OF + '//' + 'masked' + str(len(image_list)-1) + '.png', final);
-"""
+    image1 = cv2.imread(image_list[i])
+    img=mask2.apply(image1)
+final= np.zeros_like(frame2)
+image1_=cv2.imread(image_list[0])
+imgkk=mask2.apply(image1_)
+indexq=(imgkk>10)
+final[indexq]=image1_[indexq]
+cv2.imwrite(path_OF + '//' + 'masked' + str(0) + '.png', final);
+
+
 cv2.destroyAllWindows()
