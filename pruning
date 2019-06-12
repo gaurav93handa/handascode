@@ -1,46 +1,117 @@
 import cv2
 import numpy as np
+import matplotlib.pyplot as plt
+import string
+import kdtree
 
-#path_mask1="D:/Gaurav/Gaurav_processed/2019-04-05/aidan_orignal_1_slap/2.Reconstruction/masked2cam1.png";
-#path_mask2="D:/Gaurav/Gaurav_processed/2019-04-05/aidan_orignal_1_slap/2.Reconstruction/masked2cam2.png";
-path_mask1="D:/Gaurav/Gaurav_processed/2019-04-05/aidan_orignal_1_slap/2.Reconstruction/masked2cam1.png";
-path_mask2="D:/Gaurav/Gaurav_processed/2019-04-05/aidan_orignal_1_slap/2.Reconstruction/masked2cam2.png";
-img_c_mask1=cv2.imread(path_mask1);
-img_c_mask2=cv2.imread(path_mask2);
-img_mask1=cv2.cvtColor(img_c_mask1,cv2.COLOR_BGR2GRAY)
-img_mask2=cv2.cvtColor(img_c_mask2,cv2.COLOR_BGR2GRAY)
+path=r"D:\Gaurav\Gaurav_processed\testing\3d_mapping\with_calibration\aidan_orignal_1_wrist\frame0\pruning"
+path=path.replace('\\','/')
 
-image_1_binary__=(img_mask1!=0);
-image_1_binary_=np.array(image_1_binary__);
+#payload data
+class Item(object):
+    def __init__(self, x, y, data):
+        self.coords = (x, y)
+        self.data = data
 
-image_2_binary__=(img_mask2!=0);
-image_2_binary_=np.array(image_2_binary__);
+    def __len__(self):
+        return len(self.coords)
 
-image_binary_=np.logical_or(image_1_binary_,image_2_binary_)
-image_binary=image_binary_.astype(int);
-index=np.argwhere(image_binary==1)
-print(index.shape)
-file_new=open('C:/Users/umroot/Desktop/sandbox/mask_union.txt','w+')
-for i in range(0,len(index)):
-    file_new.write("%d,%d\n" %(index[i][0],index[i][1]))
-file_new.close()
+    def __getitem__(self, i):
+        return self.coords[i]
 
-path_map="C:/Users/umroot/Desktop/sandbox/3d_2d_points.txt"
-data=np.loadtxt(path_map,dtype='int',delimiter=',')
-print(data.shape)
+    def __repr__(self):
+        return 'Item({}, {}, {})'.format(self.coords[0], self.coords[1], self.data)
 
-path_prune="C:/Users/umroot/Desktop/sandbox//prune_points.txt"
-file_prune=open(path_prune,"w+")
-pruned_list=[]
-for i in range(0,len(index)):
-    for j in range(0,len(data)):
-        print(index[i][0],data[j][3])
-        print(index[i][1],data[j][4])
-        if index[i][0]==data[j][3]  and index[i][1]==data[j][4]:
-            pruned_list.append("v %f %f %f"%(data[j][0],data[j][1],data[j][2]))
-            file_prune.write("v %f %f %f"%(data[j][0],data[j][1],data[j][2]))
-file_prune.close();
-print(len(pruned_list));
+#reading masked points in pixcel_x,pixcel_y
+masked_image=cv2.imread(path+'/masked0.png')
+image_gray=cv2.cvtColor(masked_image,cv2.COLOR_BGR2GRAY)
+masked_points_=np.array(image_gray>0)
+masked_points=np.argwhere(masked_points_==True)
+print(masked_points.shape)
+#FYI--> pixcel location reading from image is fliped
+pixcel_x=masked_points[:,1]
+pixcel_y=masked_points[:,0]
+
+#reading from point cloud
+points_list=[]
+file_points=open(path+"/3d_2d_points.txt",'r')
+for f in file_points:
+    po=f.rstrip().split(",")
+    obj=Item((float(po[3])),float((po[4])),[float(po[0]),float(po[1]),float(po[2])])
+    points_list.append(obj)
+print(len(points_list))
+points=np.array(points_list)
+file_points.close()
+
+
+#create kd-tree
+file_n=open(path+'/pruned_cloud.epts','w+')
+tree_n=kdtree.create(points_list,dimensions=2)
+print(tree_n)
+print(pixcel_x[0],pixcel_y[0])
+for i in range(0,len(pixcel_x)):
+    result=tree_n.search_nn((float(pixcel_x[i]),float(pixcel_y[i])))
+    print(result)
+    if result[0].data[0]==pixcel_x[i] and result[0].data[1]==pixcel_y[i]:
+        a=result[0].data.data
+        file_n.write('v %f %f %f'%(float(a[0]),float(a[1]),float(a[2]))+'\n')
+file_n.close()
+
+
+
+""" BRUTE FORCE
+#reading from point cloud
+points=[]
+file_points=open(path+"/3d_2d_points.txt",'r')
+for f in file_points:
+    po=f.rstrip().split(",")
+    points.append([float(po[0]),float(po[1]),float(po[2]),float(po[3]),float(po[4])])
+print(len(points))
+points=np.array(points)
+file_points.close()
+pixcel_xp=points[:,3]
+pixcel_yp=points[:,4]
+plt.plot(pixcel_xp,pixcel_yp,'xb')
+ax=plt.gca()
+ax.invert_yaxis()
+plt.show()
+print("plottttttttttt")
+
+#Getting pruned cloud
+path_pruned=path+'/pruned_cloud.epts'
+file_pruned=open(path_pruned,'w+')
+pruned_points=[]
+for i in range(0,len(pixcel_x)):
+    for j in range(0,len(points)):
+        if float(pixcel_x[i])== points[j][3] and float(pixcel_y[i])==points[j][4]:
+            pruned_points.append([points[j][0],points[j][1],points[j][2]])
+            file_pruned.write('v %f %f %f\n'%(points[j][0],points[j][1],points[j][2]))
+            print('v %f %f %f\n'%(points[j][0],points[j][1],points[j][2]))
+print(len(pruned_points))
+"""
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
