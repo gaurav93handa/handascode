@@ -1,142 +1,271 @@
 import cv2
 import numpy as np
-import glob
-import os
 import matplotlib.pyplot as plt
+import math
 
-path_='D:\\Gaurav\\Gaurav_processed\\2019-04-05\\aidan_orignal_1_wrist\\1_1.ExtraInfo\\Cam1Undistorted';
+base_path=r"D:\testing_rand"
+
+
+path_=base_path+"/00003.obj"
 path=path_.replace('\\','/');
-path_OF_=path+'\\OF_dense_pics'
+
+path_OF_=base_path+"/3d_2d_norm_map.txt"
 path_OF=path_OF_.replace('\\','/');
-try:
-    os.mkdir(path_OF)
-except OSError:
-    print ("Creation of the directory %s failed" % path_OF)
-else:
-    print ("Successfully created the directory %s " % path_OF)
 
-image_list=[];
-for f in glob.glob(path+'/*.png'):
-    image_list.append(f.replace('\\','/'))
-if len(image_list)==0:
-    for f in glob.glob(path + '/*.jpg'):
-        image_list.append(f.replace('\\', '/'))
+#transformation matrix
+"""
+<transform>
+9.9338013211135090e-001 -2.9805702560414815e-002 1.1093932225011688e-001 -1.5028065299914068e+000
+-2.9203840559915518e-002 -9.9954863937142346e-001 -7.0465046148544758e-003 -1.4643738600859262e-002
+1.1109927462853314e-001 3.7600034064098819e-003 -9.9380220041585621e-001 -8.4709483083215700e-002
+0.0000000000000000e+000 0.0000000000000000e+000 0.0000000000000000e+000 1.0000000000000000e+000
+</transform>
+"""
 
+#Getting point_array
+file=open(path,'r')
+list_xyz=[]
+list_norm=[]
+for i in file:
+    if not(i.find('vn')):
+        string=i.strip("vn").strip('\n').replace(" ",",").strip("").split(",")
+        del string[0]
+        list_norm.append(string)
+    else:
+        string = i.strip("v").strip('\n').replace(" ",",").strip("").split(",")
+        del string[0]
+        list_xyz.append(string)
+file.close()
+point_array_xyz_=np.float32(list_xyz)
+point_array_xyz=point_array_xyz_[:,[0,1,2]]
+point_array_norm_=np.float32(list_norm)
+point_array_norm=point_array_norm_[:,[0,1,2]]
+point_array_=[]
+for i in range(0,len(point_array_xyz)):
+    point_array_.append([point_array_xyz[i,0],point_array_xyz[i,1],point_array_xyz[i,2],point_array_norm[i,0],point_array_norm[i,1],point_array_norm[i,2]])
+point_array=np.array(point_array_)
+print(point_array.shape)
 
-def dispOpticalFlow( Image,Flow,Divisor,name ):
-    #"Display image with a visualisation of a flow over the top. A divisor controls the density of the quiver plot."
-    PictureShape = np.shape(Image)
-    #determine number of quiver points there will be
-    Imax = int(PictureShape[0]/Divisor)
-    Jmax = int(PictureShape[1]/Divisor)
-    #create a blank mask, on which lines will be drawn.
-    mask = np.zeros_like(Image)
-    for i in range(1, Imax):
-        for j in range(1, Jmax):
-            X1 = (i)*Divisor
-            Y1 = (j)*Divisor
-            X2 = int(X1 + Flow[X1,Y1,1])
-            Y2 = int(Y1 + Flow[X1,Y1,0])
-            X2 = np.clip(X2, 0, PictureShape[0])
-            Y2 = np.clip(Y2, 0, PictureShape[1])
-            #add all the lines to the mask
-            mask = cv2.line(mask, (Y1,X1),(Y2,X2), [255, 255, 255], 1)
-    #superpose lines onto image
-    img = cv2.add(Image,mask)
-    #cv2.waitKey(0);
-    #print image
-    #cv2.imshow(name,img)
-    #cv2.waitKey(0);
-    return img
+"""
+points_list=[]
+file=open(path,'r')
+file_d=open(path_OF,"w+")
+i=0
+for f in file:
+    str1=f.replace('v ','').replace(' ',',').split(',')
+    #print(str1)
+    points_list.append(str1)
+    file_d.write(str(str1))
+    i=i+1;
+file.close()
+file_d.close()
+point_array=np.float32(points_list)
+print(point_array.shape)
+"""
 
-frame1=cv2.imread(image_list[0]);
-prvs = cv2.cvtColor(frame1,cv2.COLOR_BGR2GRAY)
-hsv = np.zeros_like(frame1)
-hsv[...,1] = 255
+#Getting tvec
+tvec_list=[-1.5028065299914,-0.014643738600859,-0.084709483083215];
+#tvec_list=[0.0, 0.0, 0.0];
+tvec=np.array(tvec_list)
+print(tvec)
 
-flow_x_list=[]
-flow_y_list=[]
-flow_list=[]
-count=0
-j=1;
-for k in range(0,len(image_list)-1):
-    #getting flow vectors for a frame
-    frame2 = cv2.imread(image_list[j]);
-    next = cv2.cvtColor(frame2,cv2.COLOR_BGR2GRAY);
-    flow_z=np.zeros_like(next)
-    #flow=cv2.calcOpticalFlowFarneback(prvs,next,flow_z,0.5, 2, 15, 3, 10, 1.2, 0);
-    flow = cv2.calcOpticalFlowFarneback(prvs, next, flow_z, 0.5, 2, 15, 3, 10, 1.5, 0);
-    flow_x = flow[:, :, 0];
-    flow_x_list.append(flow_x);
-    flow_y = flow[:, :, 1];
-    flow_y_list.append(flow_y);
-    flow_normal = np.sqrt(np.square(flow_x) + np.square(flow_y));
-    flow_list.append(flow_normal);
+#Getting rvec
+"""""
+<transform>
+9.9338013211135090e-001 -2.9805702560414815e-002 1.1093932225011688e-001 -1.5028065299914068e+000
+-2.9203840559915518e-002 -9.9954863937142346e-001 -7.0465046148544758e-003 -1.4643738600859262e-002
+1.1109927462853314e-001 3.7600034064098819e-003 -9.9380220041585621e-001 -8.4709483083215700e-002
+0.0000000000000000e+000 0.0000000000000000e+000 0.0000000000000000e+000 1.0000000000000000e+000
+</transform>
+"""
+rvec_list=[[0.99338013211135090,-0.029805702560414815,0.11093932225011688],
+       [-0.029203840559915518,-0.99954863937142346,-0.0070465046148544758],
+       [0.11109927462853314,0.0037600034064098819,-0.99380220041585621]]
+"""
+rvec_list=[[1.0, 0.0, 0.0],
+       [0.0,-1.0, 0.0],
+       [0.0, 0.0, -1.0]]
+"""
+rvec=np.array(rvec_list)
+print(rvec)
 
-    """#saving each flow in .txt file
-    file=open(path_OF+'\\'+str(j)+'.txt','w');
-    flow.tofile(file,sep=",",format="%s");
-    file.close();
-    """
-
-    """
-    #Creating HSV
-    mag, ang = cv2.cartToPolar(flow[..., 0], flow[..., 1])
-    hsv[..., 0] = ang * 180 / np.pi / 2
-    hsv[..., 2] = cv2.normalize(mag, None, 0, 255, cv2.NORM_MINMAX)
-    bgr = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
-    #cv2.imwrite(path_OF+'\\'+'opticalfb'+str(j)+'.png', frame2)
-    cv2.imwrite(path_OF+'\\'+'opticalhsv'+str(j)+'.png', bgr)
-    """
-    j=j+1;
-    prvs = next;
-
-
-
-for i in range(0,len(flow_x_list)-1):
-    flow_x_new=np.add(abs(flow_x_list[i]),abs(flow_x_list[i+1]))
-    flow_y_new=np.add(abs(flow_y_list[i]),abs(flow_y_list[i+1]))
-    mag, ang = cv2.cartToPolar(flow_x_new, flow_y_new)
-    hsv[..., 0] = ang * 180 / np.pi / 2
-    hsv[..., 2] = cv2.normalize(mag, None, 0, 255, cv2.NORM_MINMAX)
-    bgr = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
-    # cv2.imwrite(path_OF+'\\'+'opticalfb'+str(j)+'.png', frame2)
-    cv2.imwrite(path_OF + '\\' + 'opticalhsv' + str(i) + '.png', bgr)
+#cameraMatrix
+camera_matrix_list=[[1408.9971650981, 0.0, 336-42],
+       [0.0, 1408.9971650981,304-67],
+       [0.0, 0.0, 1.0]]
+"""
+sandbox good points test
+camera_matrix_list=[[1462.94220896788, 0.0, 336+6],
+       [0.0, 1462.94220896788, 304+5],
+       [0.0, 0.0, 1.0]]
+"""
+camera_matrix=np.array(camera_matrix_list)
+print(camera_matrix.shape)
 
 
-flow_new=[]
-for k in range(0,len(flow_list)-1):
-    a=flow_list[k];
-    b=flow_list[k+1];
-    indx1=(a>1)
-    indx2=(b>1)
-    indx3=np.logical_and(indx1,indx2)
-    flow_latest=np.zeros_like(flow_list[0])
-    flow_list_=flow_list[k]
-    flow_latest[indx3]=flow_list_[indx3]
-    flow_new.append(flow_latest)
 
-j=1
-for h in range(0,len(flow_new)):
-    # saving .png with optical flow vectors
-    flow_a=flow_new[h]
-    indx=(flow_a>1)
-    prvs=cv2.imread(image_list[j])
-    final = np.zeros_like(frame2)
-    final[indx] = prvs[indx]
-    cv2.imwrite(path_OF + '//' + 'masked' + str(j) + '.png', final);
-    j=j+1;
+#NON_API METHOD
+imagePoints=[]
+for i in range(0,len(point_array)):
+    points=np.matmul(camera_matrix,(np.matmul(rvec,np.transpose(point_array[i,[0,1,2]]))+tvec))
+    imagePoints.append(points)
+image_points=np.array(imagePoints)
+pixcel_x_=[]
+pixcel_y_=[]
+for i in range(0,len(point_array)):
+    pixcel_x_.append((image_points[i][0]/image_points[i][2]))
+    pixcel_y_.append((image_points[i][1]/image_points[i][2]))
+pixcel_x=np.array(pixcel_x_)
+pixcel_y=np.array(pixcel_y_)
+
+file_new=open(base_path+'/non_api.txt','w+')
+for i in range(0,len(point_array)):
+    file_new.write("%d,%d\n" %(pixcel_x[i],pixcel_y[i]))
+file_new.close()
+
+#API METHOD
+result,jacobin=cv2.projectPoints(point_array[:,[0,1,2]], rvec, tvec, camera_matrix,None)
+result_final=np.array(result)
+x=result_final[:,:,0]
+y=result_final[:,:,1]
+file_new=open(base_path+'/api.txt','w+')
+for i in range(0,len(x)):
+    file_new.write("%d,%d\n" %(x[i],y[i]))
+
+#writing 3d_2d_norm_map.txt using nonAPI
+file_new_2=open(base_path+'/3d_2d_norm.txt','w+')
+for i in range(0,len(pixcel_x)):
+    file_new_2.write("%f,%f,%f,%d,%d,%f,%f,%f\n"%(point_array[i][0],point_array[i][1],point_array[i][2],pixcel_x[i],pixcel_y[i],point_array[i][3],point_array[i][4],point_array[i][5]))
+file_new.close()
+file_new_2.close()
 
 
-flow_a=flow_list[len(flow_list)-1]
-flow_b=flow_new[len(flow_new)-1]
-indx1=(flow_b>1)
-flow_c=np.zeros_like(flow_list[0])
-flow_c[np.logical_not(indx1)]=flow_a[np.logical_not(indx1)]
-indx=(flow_c>1)
-prvs=cv2.imread(image_list[len(image_list)-1])
-final = np.zeros_like(frame2)
-final[indx] = prvs[indx]
-cv2.imwrite(path_OF + '//' + 'masked' + str(len(image_list)-1) + '.png', final);
 
-cv2.destroyAllWindows()
+"""
+img=cv2.imread(base_path+"/cam2.png")
+ax=plt.gca()
+ax.yaxis_inverted()
+plt.imshow(img)
+plt.plot(pixcel_x,pixcel_y,'bo')
+plt.show();
+"""
+
+**********************************************************************************************************************************
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+import string
+import kdtree
+
+path=r"D:\testing_rand"
+path=path.replace('\\','/')
+
+#payload data
+class Item(object):
+    def __init__(self, x, y, data):
+        self.coords = (x, y)
+        self.data = data
+
+    def __len__(self):
+        return len(self.coords)
+
+    def __getitem__(self, i):
+        return self.coords[i]
+
+    def __repr__(self):
+        return 'Item({}, {}, {})'.format(self.coords[0], self.coords[1], self.data)
+
+#reading masked points in pixcel_x,pixcel_y
+masked_image=cv2.imread(path+'/masked3.png')
+image_gray=cv2.cvtColor(masked_image,cv2.COLOR_BGR2GRAY)
+masked_points_=np.array(image_gray>0)
+masked_points=np.argwhere(masked_points_==True)
+print(masked_points.shape)
+#FYI--> pixcel location reading from image is fliped
+pixcel_x=masked_points[:,1]
+pixcel_y=masked_points[:,0]
+
+#reading from point cloud
+points_list=[]
+file_points=open(path+"/3d_2d_norm.txt",'r')
+for f in file_points:
+    po=f.rstrip().split(",")
+    obj=Item((float(po[3])),float((po[4])),[float(po[0]),float(po[1]),float(po[2]),float(po[5]),float(po[6]),float(po[7])])
+    points_list.append(obj)
+print(len(points_list))
+points=np.array(points_list)
+file_points.close()
+
+
+#create kd-tree
+file_n=open(path+'/pruned_cloud.epts','w+')
+tree_n=kdtree.create(points_list,dimensions=2)
+print(tree_n)
+print(pixcel_x[0],pixcel_y[0])
+for i in range(0,len(pixcel_x)):
+    result=tree_n.search_nn((float(pixcel_x[i]),float(pixcel_y[i])))
+    print(result)
+    if result[0].data[0]==pixcel_x[i] and result[0].data[1]==pixcel_y[i]:
+        a=result[0].data.data
+        file_n.write('v %f %f %f'%(float(a[0]),float(a[1]),float(a[2]))+'\n'+'vn %f %f %f'%(float(a[3]),float(a[4]),float(a[5]))+'\n')
+file_n.close()
+
+
+
+""" BRUTE FORCE
+#reading from point cloud
+points=[]
+file_points=open(path+"/3d_2d_points.txt",'r')
+for f in file_points:
+    po=f.rstrip().split(",")
+    points.append([float(po[0]),float(po[1]),float(po[2]),float(po[3]),float(po[4])])
+print(len(points))
+points=np.array(points)
+file_points.close()
+pixcel_xp=points[:,3]
+pixcel_yp=points[:,4]
+plt.plot(pixcel_xp,pixcel_yp,'xb')
+ax=plt.gca()
+ax.invert_yaxis()
+plt.show()
+print("plottttttttttt")
+
+#Getting pruned cloud
+path_pruned=path+'/pruned_cloud.epts'
+file_pruned=open(path_pruned,'w+')
+pruned_points=[]
+for i in range(0,len(pixcel_x)):
+    for j in range(0,len(points)):
+        if float(pixcel_x[i])== points[j][3] and float(pixcel_y[i])==points[j][4]:
+            pruned_points.append([points[j][0],points[j][1],points[j][2]])
+            file_pruned.write('v %f %f %f\n'%(points[j][0],points[j][1],points[j][2]))
+            print('v %f %f %f\n'%(points[j][0],points[j][1],points[j][2]))
+print(len(pruned_points))
+"""
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
