@@ -1,0 +1,173 @@
+import numpy as np
+import math
+from sklearn.neighbors import NearestNeighbors
+import random
+import matplotlib.pyplot as plt
+path_base=r'C:\Users\abc\Desktop\PCLProject\testing\test_centeroid\set1\aidan_orignal_2_wrist'
+path=path_base+r"\pruned_cloud_more.obj"
+file1=open(path,'r')
+list_pc=[]
+for i in file1:
+        string1 = i.strip("v").strip('\n').replace(" ",",").strip("").split(",")
+        del string1[0]
+        list_pc.append(string1)
+file1.close()
+point_array_pc_=np.float32(list_pc)
+point_array_pc=point_array_pc_[:,[0,1,2]]
+print("point_array_pc"+str(point_array_pc.shape))
+
+path2=path_base+r"\stick_template.obj"
+file2=open(path2,'r')
+list_t=[]
+for i in file2:
+        string2 = i.strip("v").strip('\n').replace(" ",",").strip("").split(",")
+        del string2[0]
+        list_t.append(string2)
+file2.close()
+point_array_t_=np.float32(list_t)
+point_array_t=point_array_t_[:,[0,1,2]]
+print("point_array_t"+str(point_array_t.shape))
+
+sum_pc=np.sum(point_array_pc,axis=0)
+sum_t=np.sum(point_array_t,axis=0)
+centeroid_pc=np.array([sum_pc[0]/len(point_array_pc),sum_pc[1]/len(point_array_pc),sum_pc[2]/len(point_array_pc)])
+centeroid_t=np.array([sum_t[0]/len(point_array_t),sum_t[1]/len(point_array_t),sum_t[2]/len(point_array_t)])
+print("centeroid t"+str(centeroid_t))
+print("centeroid pc"+str(centeroid_pc))
+
+
+point_array_t=point_array_t-np.tile(centeroid_t,(len(point_array_t),1))
+point_array_pc=point_array_pc-np.tile(centeroid_pc,(len(point_array_pc),1))
+print("point_array_pc"+str(point_array_pc.shape))
+print("point_array_t"+str(point_array_t.shape))
+
+
+path3=path_base+r"\test_stick_template_align.obj"
+file31=open(path3,'w+')
+for j in range (0,len(point_array_t)-1):
+    file31.write("v %f %f %f\n"%(float(point_array_t[j][0]),float(point_array_t[j][1]),float(point_array_t[j][2])))
+file31.close()
+
+path4=path_base+r"\test_pruned_cloud_align.obj"
+file41=open(path4,'w+')
+for j in range (0,len(point_array_pc)-1):
+    file41.write("v %f %f %f\n"%(float(point_array_pc[j][0]),float(point_array_pc[j][1]),float(point_array_pc[j][2])))
+file41.close()
+
+def score(t,pc,a):
+    n_points_temp=len(t)
+    n_points_pc=len(pc)
+
+    #Rotation matrix:
+    R = np.array([
+      [math.cos(a),-math.sin(a),0],
+      [math.sin(a),math.cos(a), 0],
+      [0, 0, 1]
+                 ])
+    rotated_t_list=[]
+    for i in range(0,len(t)):
+        rotated_t_list.append(np.matmul(R,t[i].T).T)
+    rotated_t=np.array(rotated_t_list)
+
+    nbrs = NearestNeighbors(n_neighbors=10, algorithm='ball_tree').fit(pc)
+    distances, indices = nbrs.kneighbors(rotated_t)
+    total_distance_=np.sum(distances,axis=0)
+    print(str(total_distance_))
+    total_distance=np.sum(total_distance_)
+    return(total_distance)
+
+def compute(t,pc):
+    # getting rotation values
+    angle_list = []
+    for i in range(1, 361):
+        angle = (math.pi / 180) * i
+        angle_list.append(angle)
+    angle_array=np.array(angle_list)
+
+    #getting random 10 points from template
+    random_t=[]
+    for x in range(5):
+        index=random.randint(0,len(t)-1)
+        random_t.append([t[index][0],t[index][1],t[index][2]])
+    t_array=np.array(random_t)
+
+    #storing randommly chosen points:
+    path4a = path_base+r"\random_points.obj"
+    file41 = open(path4a, 'w+')
+    for j in range(0, len(random_t) - 1):
+        file41.write(
+            "v %f %f %f\n" % (float(random_t[j][0]), float(random_t[j][1]), float(random_t[j][2])))
+    file41.close()
+
+    angle_dis=[]
+    for i in range(0,len(angle_array)):
+        angle_dis.append([i+1,score(t_array,pc,angle_array[i])])
+    angle_dis_array=np.array(angle_dis)
+
+    for j in range(0,len(angle_dis_array)):
+        print("angle: %s, Total dis: %s"%(str(angle_dis_array[j][0]),str(angle_dis_array[j][1])))
+
+    min=np.argmin(angle_dis_array,axis=0)
+    print("final_angle: %s,distance: %s"%(str(angle_dis_array[min[1]][0]),str(angle_dis_array[min[1]][1])))
+    plt.plot(angle_dis_array[:, 0], angle_dis_array[:, 1])
+
+    #find the first dip angle
+    angle_list=[]
+    for i in range(0,len(angle_dis_array)-2):
+        d0 = angle_dis_array[i][1]
+        a0 = angle_dis_array[i][0]
+        d=angle_dis_array[i+1][1]
+        a=angle_dis_array[i+1][0]
+        d1 = angle_dis_array[i+2][1]
+        a1 = angle_dis_array[i+2][0]
+        if (d0>d and d1>d):
+            angle_list.append([a,d])
+        angle_list_array=np.array(angle_list)
+    print("angle_list")
+    print(str(angle_list_array))
+    return angle_list_array[0][0],angle_list_array[0][1]
+    #return angle_dis_array[min[1]][0],angle_dis_array[min[1]][1]
+
+
+angle,dis=compute(point_array_t,point_array_pc)
+print(str(angle))
+print(str(dis))
+a=(math.pi / 180) *angle
+#save the template array with the new rotation
+#Rotation matrix:
+R = np.array([
+      [math.cos(a),-math.sin(a),0],
+      [math.sin(a),math.cos(a), 0],
+      [0, 0, 1]
+                 ])
+final_template=[]
+for i in range(0, len(point_array_t)):
+    v=np.matmul(R,point_array_t[i].T).T
+    final_template.append(v)
+final_t=np.array(final_template)
+path5=path_base+r"\final_temp.obj"
+file5=open(path5,'w+')
+for j in range (0,len(final_t)-1):
+    file5.write("v %f %f %f\n"%(float(final_t[j][0]),float(final_t[j][1]),float(final_t[j][2])))
+file5.close()
+
+#writing template aligned to cloud fil
+final_t_a=final_t+np.tile(centeroid_pc,(len(final_t),1))
+sum_t=np.sum(final_t_a,axis=0)
+centeroid_new_t=np.array([sum_t[0]/len(point_array_t),sum_t[1]/len(point_array_t),sum_t[2]/len(point_array_t)])
+print("centeroid temp")
+print(str(centeroid_new_t))
+print('centeroid pc')
+print(str(centeroid_pc))
+path6=path_base+r"\template_aligned.obj"
+file6=open(path6,'w+')
+for j in range (0,len(final_t_a)-1):
+    file6.write("v %f %f %f\n"%(float(final_t_a[j][0]),float(final_t_a[j][1]),float(final_t_a[j][2])))
+file6.close()
+
+plt.show()
+
+
+
+
+
