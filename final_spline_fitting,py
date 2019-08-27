@@ -1,0 +1,58 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+from scipy import interpolate
+
+path=r'C:\Users\abc\Desktop\skelton\skel2.obj'
+file=open(path,'r')
+list_norm=[]
+list_xyz=[]
+for i in file:
+    if not(i.find('vn')):
+        string=i.strip("vn").strip('\n').replace(" ",",").strip("").split(",")
+        del string[0]
+        list_norm.append(string)
+    else:
+        string = i.strip("v").strip('\n').replace(" ",",").strip("").split(",")
+        del string[0]
+        list_xyz.append(string)
+file.close()
+list_xyz=np.float32(list_xyz)
+list_norm=np.float32(list_norm)
+
+x = list_xyz[:,0]
+y = list_xyz[:,1]
+z=  list_xyz[:,2]
+tck = interpolate.UnivariateSpline(x, y,k=3, s=1)
+xnew = np.arange(min(list_xyz[:,0]),max(list_xyz[:,0]),-(min(list_xyz[:,0])-max(list_xyz[:,0]))/100)
+ynew = tck(xnew)
+
+tck_z = interpolate.UnivariateSpline(x, z,k=3, s=1)
+xnew = np.arange(min(list_xyz[:,0]),max(list_xyz[:,0]),-(min(list_xyz[:,0])-max(list_xyz[:,0]))/100)
+znew = tck_z(xnew)
+
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+ax.scatter(x,y,z,'r')
+ax.plot(xnew,ynew,znew)
+ax.legend()
+plt.show()
+
+path2=r'C:\Users\abc\Desktop\skelton\skel2_curve.obj'
+file2=open(path2,'w+')
+for i in range(0,len(xnew)):
+    file2.write('v %f %f %f\n'%(xnew[i],ynew[i],znew[i]))
+file2.close()
+
+
+
+
+
+
+
+
+
+
+
+
+
