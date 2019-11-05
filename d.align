@@ -1,150 +1,306 @@
-import glob
-from matplotlib import pyplot
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-from matplotlib.widgets import CheckButtons
-from matplotlib.widgets import RadioButtons
+# examples/Python/Advanced/global_registration.py
+import open3d as o3d
 import numpy as np
+import copy
+import sys
+import glob
+import os
 
 
 
-#Getting Points in array one at time
-def show(index):
-    fig = pyplot.figure()
-    plt = Axes3D(fig)
-    pc_xyz=[]
-    temp_xyz=[]
-    file_temp=open(list_temp[index])
-    file_pc=open(list_pc[index])
+def obj_pcd(file):
+    #getting new path
+    path=file.replace('\\','/')
+    path=path.replace('\\','/')
+    base_path=path.rsplit('/',1)
+    name=base_path[1].split('.')
+    print(name)
+    new_path=base_path[0]+'/'+name[0]+'.pcd'
 
-    #READING TEMPLATE
-    for j in file_temp:
-        if not (j.find('vn')):
-            string = j.strip("vn").strip('\n').replace(" ", ",").strip("").split(",")
+
+    #convert obj->pcd
+    file=open(path,'r')
+    list_norm=[]
+    list_xyz=[]
+    for i in file:
+        if not(i.find('vn ')):
+            string=i.strip("vn").strip('\n').replace(" ",",").strip("").split(",")
+            del string[0]
+            list_norm.append(string)
+        if not(i.find('v ')):
+            string = i.strip("v").strip('\n').replace(" ",",").strip("").split(",")
+            del string[0]
+            list_xyz.append(string)
+    file.close()
+    list_xyz=np.float32(list_xyz)
+    list_norm=np.float32(list_norm)
+
+    file_new=open(new_path,'w+')
+    if len(list_norm)==0:
+        file_new.write("# .PCD v0.7 - Point Cloud Data file format\n\
+VERSION 0.7\n\
+FIELDS x y z\n\
+SIZE 4 4 4\n\
+TYPE F F F\n\
+COUNT 1 1 1\n\
+WIDTH %s\n\
+HEIGHT 1\n\
+VIEWPOINT 0 0 0 1 0 0 0\n\
+POINTS %s\n\
+DATA ascii\n\
+"%(str(len(list_xyz)),str(len(list_xyz))))
+        for i in range(0,len(list_xyz)):
+            file_new.write("%f %f %f\n"%(list_xyz[i][0],list_xyz[i][1],list_xyz[i][2]))
+        file_new.close()
+    else:
+        file_new.write("# .PCD v0.7 - Point Cloud Data file format\n\
+VERSION 0.7\n\
+FIELDS x y z\n\
+SIZE 4 4 4\n\
+TYPE F F F\n\
+COUNT 1 1 1\n\
+WIDTH %s\n\
+HEIGHT 1\n\
+VIEWPOINT 0 0 0 1 0 0 0\n\
+POINTS %s\n\
+DATA ascii\n\
+" % (str(len(list_xyz)), str(len(list_xyz))))
+        for i in range(0, len(list_xyz)):
+            file_new.write("%f %f %f %f %f %f\n" % (list_xyz[i][0], list_xyz[i][1], list_xyz[i][2],list_norm[i][0], list_norm[i][1], list_norm[i][2]))
+        file_new.close()
+
+def pcd_obj(file):
+    # getting new path
+    path = file.replace('\\', '/')
+    base_path = path.rsplit('/', 1)
+    name = base_path[1].split('.')
+    print(name)
+    new_path = base_path[0] + '/' + name[0] + '.obj'
+
+    # convert pcd->obj
+    file = open(path, 'r')
+    file2=open(new_path,'w+')
+    count=1
+    for i in file:
+        if count<12:
+            count=count+1
         else:
-            string = j.strip("v").strip('\n').replace(" ", ",").strip("").split(",")
-            del string[0]
-            temp_xyz.append(string)
+        #if not(any(c.isalpha() for c in i)):
+            s=i.split(" ")
+            xyz="v %f %f %f\n"%(float(s[0]),float(s[1]),float(s[2]))
+            file2.write(xyz)
+            norm="vn %f %f %f\n"%(float(s[3]),float(s[4]),float(s[5]))
+            file2.write(norm)
+            count=count+1
+    file.close()
 
-    #READING POINT CLOUD
-    for j in file_pc:
-        if not (j.find('vn')):
-            string = j.strip("vn").strip('\n').replace(" ", ",").strip("").split(",")
-        else:
-            string = j.strip("v").strip('\n').replace(" ", ",").strip("").split(",")
-            del string[0]
-            pc_xyz.append(string)
+def get_mesh(pc):
+    path=pc.rsplit('/',maxsplit=1)
+    folder_path=path[0]
+    file=open(pc,'r')
+    file_w=open(folder_path+'/mesh_data.pcd','w+')
+    list=[]
+    for i in file:
+        if not (i.find('f')):
+           list.append(i)
+           file_w.write(str(i))
+    file.close()
+    file_w.close()
 
-    #GETTING NUMPY ARRAY
-    pc_points=np.float32(pc_xyz)
-    temp_points=np.float32(temp_xyz)
-    print(len(pc_points))
-    plt.scatter(temp_points[:, 0], temp_points[:, 1], temp_points[:, 2], marker='o')
-    plt.scatter(pc_points[:,0], pc_points[:,1],pc_points[:,2],marker='.',alpha=0.1)
-    fig.show()
+def write_obj(vert,faces):
+    p_ver=vert
+    p_faces=faces
+    p_folder_=p_ver.rsplit('/',maxsplit=1)
+    p_folder=p_folder_[0]
+    count=p_folder_[1].rsplit('.',maxsplit=1)
+    file_v=open(p_ver,'r')
+    file_f=open(p_faces,'r')
+    file_r=open(p_folder+'/'+str(count[0])+'.obj','w+')
+    c=0
+    for i in file_v:
+        c +=1
+        if c>11:
+            file_r.write('v'+' '+str(i))
+    for j in file_f:
+        file_r.write(str(j))
+    file_v.close()
+    file_f.close()
+    file_r.close()
 
-#Save the final template
-def save_temp(index):
-    selectedtemp_location=list_temp[index]
-    xyz=[]
-    norm=[]
-    extra=[]
-    temp_file=open(selectedtemp_location,'r')
-    for j in temp_file:
-        if not (j.find('vn')):
-            string = j.strip("vn").strip('\n').replace(" ", ",").strip("").split(",")
-            del string[0]
-            norm.append(string)
-        else:
-            string = j.strip("v").strip('\n').replace(" ", ",").strip("").split(",")
-            del string[0]
-            xyz.append(string)
-    base=selectedtemp_location.rsplit('/',maxsplit=2)
-    print(base)
-    base_orignal=base[0]+"/stickdata/stick_template.obj"
-    base_orignal=base_orignal.replace("\\","/")
-    orignal_file=open(base_orignal,'r+')
-    for j in orignal_file:
-        if not (j.find('vt')):
-            extra.append(j)
-        if not (j.find('f')):
-            extra.append(j)
-    selectdtemp_final=base_path+"/stickdata/initial_aligned.obj"
-    selectdtemp_final=selectdtemp_final.replace("\\",'/')
-    result_file=open(selectdtemp_final,'w+')
-    for i in range(0,len(xyz)):
-        result_file.write("v %f %f %f"%(float(xyz[i][0]),float(xyz[i][1]),float(xyz[i][2]))+"\n"+"vn %f %f %f"%(float(norm[i][0]),float(norm[i][1]),float(norm[i][2]))+'\n')
-    for i in range(0,len(extra)):
-        result_file.write(extra[i])
-    result_file.close()
+def draw_registration_result(source, target, transformation, pointcloud):
+    source_temp = copy.deepcopy(source)
+    target_temp = copy.deepcopy(target)
+    source_temp.paint_uniform_color([1, 0.706, 0])
+    target_temp.paint_uniform_color([0, 0.651, 0.929])
+    source_temp.transform(transformation)
+    pointcloud = pointcloud.rsplit('/', maxsplit=2)
+    path = pointcloud[0] + '/alignedCloud/%s.pcd' % (str(geometry.counter))
+    o3d.io.write_point_cloud(path, source_temp, write_ascii=True)
+    print(path)
+    pcd_obj(path)
 
 
-def func1(label):
-    if label == '1-Frame':
-        show(0)
-    elif label == '2-Frame':
-        show(1)
-    elif label == '3-Frame':
-        show(2)
-    elif label == '4-Frame':
-        show(3)
-    elif label == '5-Frame':
-        show(4)
-    plt.draw()
+def preprocess_point_cloud(pcd, voxel_size):
+    print(":: Downsample with a voxel size %.3f." % voxel_size)
+    pcd_down = pcd.voxel_down_sample(voxel_size=voxel_size)
+
+
+    radius_normal = voxel_size * 5 #orignal 2
+    print(":: Estimate normal with search radius %.3f." % radius_normal)
+    pcd_down.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(radius=radius_normal, max_nn=3))#orignsl 30
+
+    radius_feature = voxel_size * 5 #orignal 5
+    print(":: Compute FPFH feature with search radius %.3f." % radius_feature)
+    pcd_fpfh = o3d.registration.compute_fpfh_feature(
+        pcd_down,
+        o3d.geometry.KDTreeSearchParamHybrid(radius=radius_feature, max_nn=3)) #orignal 100
+    return pcd_down, pcd_fpfh
+
+
+def prepare_dataset(voxel_size):
+    print(":: Load two point clouds and disturb initial pose.")
+    source = o3d.io.read_point_cloud(r"D:\skelton-approach\10-12-vSS2\template\stick_template.pcd")
+    target = o3d.io.read_point_cloud(r"D:\skelton-approach\10-12-vSS2\4.Skelton\1_Spruned.obj")
+    trans_init = np.asarray([[0.0, 0.0, 1.0, 0.0], [1.0, 0.0, 0.0, 0.0],
+                             [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0]])
+    source.transform(trans_init)
+    draw_registration_result(source, target, np.identity(4))
+
+    source_down, source_fpfh = preprocess_point_cloud(source, voxel_size)
+    target_down, target_fpfh = preprocess_point_cloud(target, voxel_size)
+    print(source_down)
+    print(source_fpfh)
+    return source, target, source_down, target_down, source_fpfh, target_fpfh
+
+
+def execute_global_registration(source_down, target_down, source_fpfh,
+                                target_fpfh, voxel_size):
+    distance_threshold = voxel_size * 3.5 #orignal 1.5 playing----orignal 2
+    print(":: RANSAC registration on downsampled point clouds.")
+    print("   Since the downsampling voxel size is %.3f," % voxel_size)
+    print("   we use a liberal distance threshold %.3f." % distance_threshold)
+    result = o3d.registration.registration_ransac_based_on_feature_matching(
+        source_down, target_down, source_fpfh, target_fpfh, distance_threshold,
+        o3d.registration.TransformationEstimationPointToPoint(False), 4, [
+            o3d.registration.CorrespondenceCheckerBasedOnEdgeLength(0.9),
+            o3d.registration.CorrespondenceCheckerBasedOnDistance(
+                distance_threshold)
+        ], o3d.registration.RANSACConvergenceCriteria(4000000, 500))
+    return result
+
+
+def refine_registration(source, target, source_fpfh, target_fpfh, voxel_size,rs):
+    distance_threshold = voxel_size * 2 #orignal 0.4 playing-----orignal 1
+    print(":: Point-to-plane ICP registration is applied on original point")
+    print("   clouds to refine the alignment. This time we use a strict")
+    print("   distance threshold %.3f." % distance_threshold)
+    source_normal=source.estimate_normals()
+    target_normal=target.estimate_normals()
+    result = o3d.registration.registration_icp(
+        source, target, distance_threshold, rs.transformation,
+        o3d.registration.TransformationEstimationPointToPoint(),o3d.registration.ICPConvergenceCriteria(max_iteration = 2000))
+    print("-------------------------------")
+    return result
 
 
 
-def func2(label):
-    if label == '1-Frame':
-        selected_frame=0
-    elif label == '2-Frame':
-        selected_frame = 1
-    elif label == '3-Frame':
-        selected_frame = 2
-    elif label == '4-Frame':
-        selected_frame = 3
-    elif label == '5-Frame':
-        selected_frame = 4
-    plt.draw()
-    save_temp(selected_frame)
-    plt.close()
+def geometry(temp,pc):
+    geometry.counter +=1
+    template=temp
+    pointcloud=pc
+
+    print(":: Load two point clouds and disturb initial pose.")
+    template=template.replace('\\','/')
+    pointcloud = pointcloud.replace('\\', '/')
+    source = o3d.io.read_point_cloud(template)
+    target = o3d.io.read_point_cloud(pointcloud)
+    target_orignal=copy.deepcopy(target)
+    source_orignal=copy.deepcopy(source)
+    voxel_size = 0.05
+    source_down, source_fpfh = preprocess_point_cloud(source, voxel_size)
+    target_down, target_fpfh = preprocess_point_cloud(target, voxel_size)
+
+    result_ransac = execute_global_registration(source_down, target_down,
+                                                source_fpfh, target_fpfh,
+                                                voxel_size)
+
+    print(result_ransac)
+
+    #Select the best one
+
+    #Save the Aligned template to the folder
 
 
-base_path=r"D:\acquisitions\2019-04-05\aidan_orignal_1_slap"
+    result_icp = refine_registration(source, target, source_fpfh, target_fpfh,
+                                     voxel_size,result_ransac)
+    m=result_icp.transformation
+    result_transformation=[
+        [m[0][0],m[1][0],m[2][0], -m[0][0]*m[0][3]-m[1][0]*m[1][3]-m[2][0]*m[2][3]],
+        [m[0][1],m[1][1],m[2][1], -m[0][1]*m[0][3]-m[1][1]*m[1][3]-m[2][1]*m[2][3]],
+        [m[0][2],m[1][2],m[2][2], -m[0][2]*m[0][3]-m[1][2]*m[1][3]-m[2][2]*m[2][3]],
+        [0,0,0,1]
+    ]
+    print(result_transformation)
 
-#To Implement:
-#Check if folder exists (cloud, aligned)
-#Check if files exits (cloud, aligned)
-#Check if count of file ok (cloud, aligned)
-#Check if correctly matched cloud template
-selected_frame=0
-#Getting aligned template- assuming just one .obj file in folder
+    """
+    draw_registration_result(source, target, result_icp.transformation)
+    result = source.transform(result_icp.transformation)
+    """
+    o3d.visualization.draw_geometries([source, target])
+    draw_registration_result(target, source, result_transformation, pointcloud)
+
+
+
+geometry.counter=0
+base_path=r"D:\acquisitions\2019-04-05\aidan_orignal_1_slap"    #sys.arg[1]
+base_path=base_path.replace('\\','/')
+
+
+#Getting template- assuming just one .obj file in folder
 list_temp=[]
-for j in glob.glob(base_path+'/alignedCloud/*.obj'):
+for j in glob.glob(base_path+'/stickdata/*template.obj'):
     list_temp.append(j.replace('\\','/'))
 
-#Getting pruned point cloud
-list_pc=[]
-for j in glob.glob(base_path+'/pruned_pointcloud/*.obj'):
-    list_pc.append(j.replace('\\','/'))
-selected_frame=0
-fig, ax = plt.subplots()
-ax.axis('off')
-plt.subplots_adjust(top=0.2)
-#plt.figure(num="INITIAL-ALIGNMENT")
-rax = plt.axes([0.05, 0.5, 0.9, 0.5])
-rax2 = plt.axes([0.05, 0.0, 0.9, 0.5])
-check = RadioButtons(rax, ('1-Frame', '2-Frame', '3-Frame','4-Frame','5-Frame'), (False,False, False,False,False))
-check2 = CheckButtons(rax2, ('1-Frame', '2-Frame', '3-Frame','4-Frame','5-Frame'), (False,False, False,False,False))
-check.on_clicked(func1)
-check2.on_clicked(func2)
-plt.show()
+#Getting Point clouds
+list_points=[]
+path_point=base_path+'/pruned_pointcloud'
+count=1
+for i in glob.glob(path_point+'/*.obj'):
+    list_points.append(i.replace('\\','/'))
+    count +=1
+    if count==7:
+        break
 
+#writing .pcd files
+obj_pcd(list_temp[0])
+for i in range (0,min(6,len(list_points))):
+    obj_pcd(list_points[i])
 
+#getting .pcd files locations
+list_temp = []
+for j in glob.glob(base_path + '/stickdata/*.pcd'):    #add features to delete already existng .pcd files
+    list_temp.append(j.replace('\\', '/'))
+list_points = []
+path_point = base_path + '/pruned_pointcloud'
+count = 1
+for i in glob.glob(path_point + '/*.pcd'):
+    list_points.append(i.replace('\\', '/'))
+    count += 1
+    if count == 7:
+        break
 
+#creating aligned cloud directory:'
+dir=base_path+'/alignedCloud'
+try:
+    os.makedirs(dir)
+except OSError:
+    print("dir not created")
 
-
-
+#Writing aligned clouds
+for i in range(0,min(6,len(list_points))):
+    print(list_points[i])
+    print(list_temp[0])
+    geometry(list_points[i],list_temp[0])
 
 
 
