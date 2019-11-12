@@ -1,0 +1,176 @@
+import glob
+from matplotlib import pyplot
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib.widgets import CheckButtons
+from matplotlib.widgets import RadioButtons
+from matplotlib.widgets import Button
+import numpy as np
+import sys
+
+
+
+#Getting Points in array one at time
+def show(index):
+    fig = pyplot.figure()
+    plt = Axes3D(fig)
+    pc_xyz=[]
+    temp_xyz=[]
+    file_temp=open(list_temp[index])
+    file_pc=open(list_pc[index])
+
+    #READING TEMPLATE
+    for j in file_temp:
+        if not (j.find('vn')):
+            string = j.strip("vn").strip('\n').replace(" ", ",").strip("").split(",")
+        else:
+            string = j.strip("v").strip('\n').replace(" ", ",").strip("").split(",")
+            del string[0]
+            temp_xyz.append(string)
+
+    #READING POINT CLOUD
+    for j in file_pc:
+        if not (j.find('vn')):
+            string = j.strip("vn").strip('\n').replace(" ", ",").strip("").split(",")
+        else:
+            string = j.strip("v").strip('\n').replace(" ", ",").strip("").split(",")
+            del string[0]
+            pc_xyz.append(string)
+
+    #GETTING NUMPY ARRAY
+    pc_points=np.float32(pc_xyz)
+    temp_points=np.float32(temp_xyz)
+    print(len(pc_points))
+    plt.scatter(temp_points[:, 0], temp_points[:, 1], temp_points[:, 2], marker='o')
+    plt.scatter(pc_points[:,0], pc_points[:,1],pc_points[:,2],marker='.',alpha=0.1)
+    fig.show()
+
+#Save the final template
+def save_temp(index):
+    selectedtemp_location=list_temp[index]
+    xyz=[]
+    norm=[]
+    extra=[]
+    temp_file=open(selectedtemp_location,'r')
+    for j in temp_file:
+        if not (j.find('vn')):
+            string = j.strip("vn").strip('\n').replace(" ", ",").strip("").split(",")
+            del string[0]
+            norm.append(string)
+        else:
+            string = j.strip("v").strip('\n').replace(" ", ",").strip("").split(",")
+            del string[0]
+            xyz.append(string)
+    base=selectedtemp_location.rsplit('/',2)
+    print(base)
+    base_orignal=base[0]+"/stickdata/stick_template.obj"
+    base_orignal=base_orignal.replace("\\","/")
+    orignal_file=open(base_orignal,'r+')
+    for j in orignal_file:
+        if not (j.find('vt')):
+            extra.append(j)
+        if not (j.find('f')):
+            extra.append(j)
+    selectdtemp_final=base_path+"/stickdata/initial_aligned.obj"
+    selectdtemp_final=selectdtemp_final.replace("\\",'/')
+    result_file=open(selectdtemp_final,'w+')
+    for i in range(0,len(xyz)):
+        result_file.write("v %f %f %f"%(float(xyz[i][0]),float(xyz[i][1]),float(xyz[i][2]))+"\n"+"vn %f %f %f"%(float(norm[i][0]),float(norm[i][1]),float(norm[i][2]))+'\n')
+    for i in range(0,len(extra)):
+        result_file.write(extra[i])
+    result_file.close()
+
+
+def func1(label):
+    if label == '1-Frame':
+        show(0)
+    elif label == '2-Frame':
+        show(1)
+    elif label == '3-Frame':
+        show(2)
+    elif label == '4-Frame':
+        show(3)
+    elif label == '5-Frame':
+        show(4)
+    plt.draw()
+
+
+
+def func2(label):
+    if label == '1-Frame':
+        selected_frame=0
+    elif label == '2-Frame':
+        selected_frame = 1
+    elif label == '3-Frame':
+        selected_frame = 2
+    elif label == '4-Frame':
+        selected_frame = 3
+    elif label == '5-Frame':
+        selected_frame = 4
+    plt.draw()
+    save_temp(selected_frame)
+    plt.close()
+
+
+#To Implement:
+#Check if folder exists (cloud, aligned)
+#Check if files exits (cloud, aligned)
+#Check if count of file ok (cloud, aligned)
+#Check if correctly matched cloud template
+#Getting aligned template- assuming just one .obj file in folder
+
+if __name__ == "__main__":
+    base_path=sys.argv[1]                  #r"D:\Gaurav\Gaurav_processed\2019-04-05\aidan_white_1_wrist"
+    selected_frame=0
+    list_temp=[]
+    for j in glob.glob(base_path+'/alignedCloud/*.obj'):
+        list_temp.append(j.replace('\\','/'))
+
+    #Getting pruned point cloud
+    list_pc=[]
+    for j in glob.glob(base_path+'/pruned_pointcloud/*.obj'):
+        list_pc.append(j.replace('\\','/'))
+
+    print(list_pc)
+    print(list_temp)
+    selected_frame=0
+    #fig, ax = plt.subplots()
+    #ax.axis('off')
+    #plt.subplots_adjust(top=0.2)
+    plt.figure("Initial-Alignment Window",[4,4])
+    rax = plt.axes([0.05, 0.5, 0.9, 0.4])
+    rax2 = plt.axes([0.05, 0.0, 0.9, 0.4])
+    rax3 = plt.axes([0.05, 0.4, 0.9, 0.1])
+    rax4 = plt.axes([0.05, 0.9, 0.9, 0.1])
+    check = RadioButtons(rax, ('1-Frame', '2-Frame', '3-Frame','4-Frame','5-Frame'), (False,False, False,False,False))
+    check2 = CheckButtons(rax2, ('1-Frame', '2-Frame', '3-Frame','4-Frame','5-Frame'), (False,False, False,False,False))
+    Title2 = Button(rax3,"Choose Best Fit Alignment:")
+    Title1= Button(rax4,"Click to Check Alignment:")
+    check.on_clicked(func1)
+    check2.on_clicked(func2)
+    plt.show()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
