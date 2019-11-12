@@ -1,0 +1,116 @@
+import cv2
+import numpy as np
+import glob
+import kdtree
+import os
+import sys
+
+if __name__== "__main__":
+    base_path_=sys.argv[1]                   #r"D:\Gaurav\Gaurav_processed\2019-04-05\aidan_white_1_wrist"
+    base_path=base_path_.replace('\\','/')
+
+    #Creation of pruning folder
+    path_prune=base_path+'/pruned_pointcloud'
+    try:
+        os.makedirs(path_prune)
+    except OSError:
+        print("Dir:%s creation Failed!"%(path_prune))
+    else:
+        print("Dir:%s creation Sucessful")
+
+    #payload data
+    class Item(object):
+        def __init__(self, x, y, data):
+            self.coords = (x, y)
+            self.data = data
+
+        def __len__(self):
+            return len(self.coords)
+
+        def __getitem__(self, i):
+            return self.coords[i]
+
+        def __repr__(self):
+            return 'Item({}, {}, {})'.format(self.coords[0], self.coords[1], self.data)
+
+    #Getting list of mapping files
+    pc_list=[]
+    for pc in glob.glob(base_path+'/mapping/*.txt'):
+        pc_list.append(pc)
+
+    #Getting list of masked images
+    img_list=[]
+    for i in glob.glob(base_path+'/masked_pics/*.png'):
+        img_list.append(i)
+
+    for i in range(0,len(pc_list)):
+        print('%s /n %s'%(pc_list[i],img_list[i]))
+
+
+    #Checking if mapping_count==masked_image_count
+    if len(pc_list)==len(img_list):
+        for i in range(0,len(pc_list)):
+            #reading masked points in pixcel_x,pixcel_y
+            image_path=img_list[i].replace('\\','/')
+            masked_image=cv2.imread(image_path)
+            image_gray=cv2.cvtColor(masked_image,cv2.COLOR_BGR2GRAY)
+            masked_points_=np.array(image_gray>0)
+            masked_points=np.argwhere(masked_points_==True)
+            print(masked_points.shape)
+            #FYI--> pixcel location reading from image is fliped
+            pixcel_x=masked_points[:,1]
+            pixcel_y=masked_points[:,0]
+
+            #reading from point cloud
+            points_list=[]
+            file_points=open(pc_list[i].replace('\\','/'),'r')
+            for f in file_points:
+                po=f.rstrip().split(",")
+                obj=Item((float(po[3])),float((po[4])),[float(po[0]),float(po[1]),float(po[2]),float(po[5]),float(po[6]),float(po[7])])
+                points_list.append(obj)
+            print(len(points_list))
+            points=np.array(points_list)
+            file_points.close()
+
+            #writing pruned cloud
+            file_n=open(path_prune+'/pruned_cloud%04d.obj'%(i),'w+')
+            tree_n=kdtree.create(points_list,dimensions=2)
+            print(tree_n)
+            print(pixcel_x[0],pixcel_y[0])
+            for i in range(0,len(pixcel_x)):
+                result=tree_n.search_nn((float(pixcel_x[i]),float(pixcel_y[i])))
+                print(result)
+                if result[0].data[0]==pixcel_x[i] and result[0].data[1]==pixcel_y[i]:
+                    a=result[0].data.data
+                    file_n.write('v %f %f %f'%(float(a[0]),float(a[1]),float(a[2]))+'\n'+'vn %f %f %f'%(float(a[3]),float(a[4]),float(a[5]))+'\n')
+            file_n.close()
+    else:
+        print("count of masked images(%d) must be equal to count of mapping files(%d)"%(len(img_list),len(pc_list)))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
