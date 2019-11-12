@@ -1,0 +1,131 @@
+import cv2
+import numpy as np
+import glob
+import os
+import sys
+
+if __name__=="__main__":
+    #Getting path of base folder
+    base_path_=sys.argv[1]             #r"D:\Gaurav\Gaurav_processed\2019-04-05\aidan_white_1_wrist"
+    base_path=base_path_.replace('\\','/')
+
+    #Checking for Folder containing undistorted images
+    path=base_path+r'/1_1.ExtraInfo/Cam1Undistorted';
+    try:
+        os.path.exists(path)
+    except OSError:
+        print("Folder:Cam1Undistorted does not exists in location:%s"%(path))
+    else:
+        print("Undistorted image folder found.")
+
+    #Cre
+    path_OF=base_path+r'/masked_pics'
+    try:
+        os.mkdir(path_OF)
+    except OSError:
+        print ("Creation of the directory %s failed" % path_OF)
+    else:
+        print ("Successfully created the directory %s " % path_OF)
+
+    #Get list of all .jpg or .png files in the diretory
+    image_list=[];
+    for f in glob.glob(path+'/*.png'):
+        image_list.append(f.replace('\\','/'))
+    if len(image_list)==0:
+        for f in glob.glob(path + '/*.jpg'):
+            image_list.append(f.replace('\\', '/'))
+
+    print(image_list)
+    #Increase pixcels
+    def add_pixcels(image,layer):
+        #Get non-zero indexes
+        image_gray=cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
+        image_binary__=(image_gray!=0);
+        image_binary_=np.array(image_binary__);
+        image_binary=image_binary_.astype(int);
+        index=np.argwhere(image_binary==1)
+
+        #Add pixcel layers around non-zero pixcels
+        num_pixcel=len(index)
+        for i in range(0,num_pixcel):
+            for j in range(1,layer):
+                if (index[i,0]-j>= 0 and index[i,0]+j>= 0 and index[i,0]-j < image_binary.shape[0] and index[i,0]+j < image_binary.shape[0] and index[i,1]-j>= 0 and index[i,1]+j>= 0 and index[i,1]-j < image_binary.shape[1] and index[i,1]+j < image_binary.shape[1]):
+                    image_binary[index[i,0]-j,index[i,1]-j] = 1;
+                    image_binary[index[i,0]+j,index[i,1]+j] = 1;
+                    image_binary[index[i,0]+j,index[i,1]-j] = 1;
+                    image_binary[index[i,0]-j,index[i,1]+j] = 1;
+                    image_binary[index[i,0],index[i,1]+j] = 1;
+                    image_binary[index[i,0]+j,index[i,1]] = 1;
+                    image_binary[index[i,0],index[i,1]-j] = 1;
+                    image_binary[index[i,0]-j,index[i,1]] = 1;
+
+        print(index.shape)
+        print(num_pixcel);
+        return (image_binary>0);
+
+
+
+    #Get the first frame
+    frame1=cv2.imread(image_list[0]);
+    prvs = cv2.cvtColor(frame1,cv2.COLOR_BGR2GRAY)
+
+
+    #Get Optial-flow
+    flow_x_list=[]
+    flow_y_list=[]
+    flow_normal=[]
+    for k in range(1,len(image_list)):
+        #getting flow vectors for a frame
+        frame2 = cv2.imread(image_list[k]);
+        next = cv2.cvtColor(frame2,cv2.COLOR_BGR2GRAY);
+        #flow=cv2.calcOpticalFlowFarneback(prvs,next,flow_z,0.5, 2, 15, 3, 10, 1.2, 0);
+        flow = cv2.calcOpticalFlowFarneback(prvs, next, None, 0.5, 2, 15, 3, 10, 1.2, 0);
+        flow_x = flow[:, :, 0];
+        flow_x_list.append(flow_x);
+        flow_y = flow[:, :, 1];
+        flow_y_list.append(flow_y);
+        flow_normal_ = np.sqrt(np.square(flow_x) + np.square(flow_y));
+        flow_normal.append(flow_normal_);
+        prvs = next;
+
+
+    #saving masked images
+    fgbg = cv2.createBackgroundSubtractorMOG2()
+    fgbg2 = cv2.createBackgroundSubtractorKNN()
+    indx = np.ones([608,672])
+
+    for h in range(0,len(image_list)):
+        indx = np.ones([608, 672])
+        if h!=len(image_list)-1:
+            flow_a=cv2.normalize(flow_normal[h],None,0,1,cv2.NORM_MINMAX);
+            indx = (flow_a > 0.05);
+
+        final_ = np.zeros_like(frame2)
+        final = np.zeros_like(frame2)
+
+        image1=cv2.imread(image_list[h])
+        fgmask = fgbg.apply(image1)
+        fgmask2= fgbg2.apply(image1)
+        ind=(fgmask>10)
+        ind2=(fgmask2>0)
+        final_index=np.logical_and(indx,ind)
+        final_index = np.logical_and(final_index, ind2)
+        final_[final_index]=image1[final_index]
+        binary_mask=add_pixcels(final_,2);
+        final[binary_mask]=image1[binary_mask]
+        cv2.imwrite(path_OF + '/'+'masked%04d.png'%(h), final);
+
+    mask2=cv2.createBackgroundSubtractorMOG2()
+    for i in range(3,len(image_list)):
+        final = np.zeros_like(frame2)
+        image1 = cv2.imread(image_list[i])
+        img=mask2.apply(image1)
+    final= np.zeros_like(frame2)
+    image1_=cv2.imread(image_list[0])
+    imgkk=mask2.apply(image1_)
+    indexq=(imgkk>10)
+    final[indexq]=image1_[indexq]
+    cv2.imwrite(path_OF + '//' + 'masked%04d.png'%(0), final);
+
+
+    cv2.destroyAllWindows()
