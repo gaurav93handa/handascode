@@ -1,0 +1,318 @@
+import numpy as np
+import sys
+import argparse
+import matplotlib.pyplot as plt
+import statsmodels.api as sm
+from scipy.spatial.distance import euclidean
+from fastdtw import fastdtw
+
+#Class for Directory dataStructure
+class my_directory(dict):
+    def __init__(self):
+        self=dict()
+    def add(self,key,value):
+        if key in self:
+            self[key].append(value)
+        else:
+            self[key]=[value]
+
+#Function: To Create limb vectors
+#input: np.array of 17X3 in Desired skelton format
+#output: 11 limb vectors
+def limb_vector(frame):
+    assert frame.shape == (17,3),"Shape of frame should be (17,3)"
+    limbs=[]
+    limbs.append(frame[9] - frame[8])
+    limbs.append(frame[8] - frame[7])
+    limbs.append(frame[7] - frame[0])
+    limbs.append(frame[1] - frame[2])
+    limbs.append(frame[2] - frame[3])
+    limbs.append(frame[4] - frame[5])
+    limbs.append(frame[5] - frame[6])
+    limbs.append(frame[14] - frame[15])
+    limbs.append(frame[15] - frame[16])
+    limbs.append(frame[11] - frame[12])
+    limbs.append(frame[12] - frame[13])
+    limbs.append(frame[14] - frame[8])
+    limbs.append(frame[11] - frame[8])
+    limbs.append(frame[2] - frame[0])
+    limbs.append(frame[4] - frame[0])
+    return np.array(limbs)
+
+#Function: To get angles between two vectors a,b
+def find_angle(a,b):
+    norm_a=np.linalg.norm(a)
+    norm_b=np.linalg.norm(b)
+    assert norm_a != 0 and norm_b != 0, "Vector can't be of 0 length"
+    return np.floor(np.degrees(np.arccos(np.clip(np.dot(a,b)/(norm_a*norm_b),-1.0,1.0))))
+
+#Function: To get cartesian distance between two vectors a,b
+def find_length(a,b):
+    return np.linalg.norm(a-b)
+
+
+#Function: To get angles between limb vectors
+#input: np.array of 11X3 in Desired limb format
+#output: 6 joint angles, rightKnee, leftKnee, spine Center, spineNeck, rightElbow, leftElbow
+def joint_angles(limbs):
+    assert limbs.shape == (15,3),"Shape of frame should be (11,3)"
+    angles=[]
+    angles.append(find_angle(limbs[4], limbs[3]))
+    angles.append(find_angle(limbs[6], limbs[5]))
+    angles.append(find_angle(limbs[2], limbs[1]))
+    angles.append(find_angle(limbs[1], limbs[0]))
+    angles.append(find_angle(limbs[8], limbs[7]))
+    angles.append(find_angle(limbs[10], limbs[9]))
+    angles.append(find_angle(limbs[3], limbs[2]))
+    return np.array(angles)
+
+#Function: To get distance between keypoints
+#input: np.array of 17X3 in Desired skelton format
+#output: shoulder length, feet width
+def joint_distance(frame):
+    assert frame.shape == (17,3),"Shape of frame should be (17,3)"
+    distance=[]
+    distance.append(find_length(frame[4], frame[2]))
+    distance.append(find_length(frame[11], frame[14]))
+    distance.append(find_length(frame[5], frame[2]))
+    distance.append(find_length(frame[13], frame[16]))
+    distance.append(find_length(frame[12], frame[15]))
+    distance.append(find_length(frame[6], frame[3]))
+    distance.append(find_length(frame[0], frame[8]))
+    return np.array(distance)
+
+#Function: To get relative angle between consecutive frame
+#input:
+#output:
+def limb_relative_angles(frame1, frame2):
+    assert frame1.shape == (15,3),"Shape of frame should be (15,3)"
+    assert frame2.shape == (15, 3), "Shape of frame should be (15,3)"
+    rel_angles=[]
+    rel_angles.append(find_angle(frame1[2], frame2[2]))
+    rel_angles.append(find_angle(frame1[1], frame2[1]))
+    rel_angles.append(find_angle(frame1[3], frame2[3]))
+    rel_angles.append(find_angle(frame1[5], frame2[5]))
+    return np.array(np.array(rel_angles))
+
+#Fun: To smooth the calcukated value using LOWESS
+def get_smooth(x,y):
+    func= sm.nonparametric.lowess
+    w= func(y,x,frac=0.1,is_sorted=True)
+    return w[:,1]
+
+#Fun: To Generate angles & distances
+#Getting angles & Distances
+def seq_data_generation(file, folder_path):
+    nb_frames=len(file)
+    calc_angles=[]
+    calc_distance=[]
+    calc_relative_angles=[]
+    calc_limb=[]
+    for i in range (0,nb_frames):
+        calc_limb.append(limb_vector(file[i]))
+    final_limb=np.array(calc_limb)
+    for i in range (0,nb_frames):
+        calc_angles.append(joint_angles(final_limb[i]))
+        calc_distance.append(joint_distance(file[i]))
+        calc_relative_angles.append(limb_relative_angles(final_limb[0],final_limb[i]))
+    final_angles=np.array(calc_angles)
+    final_distance=np.array(calc_distance)
+    final_rel_angles=np.array(calc_relative_angles)
+
+    #Ploting & saving smoothened angles & Distances curves
+    plt.figure()
+    t=np.arange(0,nb_frames,1)
+    plt.subplot(331)
+    plt.title("Right-Knee")
+    #plt.xlabel("Frames")
+    plt.ylabel("Angle (Degrees)")
+    plt.plot(t,get_smooth(t,final_angles[:,0]))
+    plt.subplot(332)
+    plt.title("Left-Knee")
+    #plt.xlabel("Frames")
+    plt.ylabel("Angle (Degrees)")
+    plt.plot(t,get_smooth(t,final_angles[:,1]))
+    plt.subplot(333)
+    plt.title("Spine-Center")
+    #plt.xlabel("Frames")
+    plt.ylabel("Angle (Degrees)")
+    plt.plot(t,get_smooth(t,final_angles[:,2]))
+    plt.subplot(334)
+    plt.title("Spine-Neck")
+    #plt.xlabel("Frames")
+    plt.ylabel("Angle (Degrees)")
+    plt.plot(t,get_smooth(t,final_angles[:,3]))
+    plt.subplot(335)
+    plt.title("Feet-shoulder Distance")
+    #plt.xlabel("Frames")
+    plt.ylabel("Distance Between (R:Ankle,G:shoulder,B:Knees")
+    plt.plot(t,get_smooth(t,final_distance[:,5]), color='r')
+    plt.plot(t,get_smooth(t,final_distance[:,1]), color='g')
+    plt.plot(t, get_smooth(t, final_distance[:, 2]), color='b')
+    plt.subplot(336)
+    plt.title("RLU-Spine1")
+    plt.xlabel("Frames")
+    plt.ylabel("Angle (Degrees)")
+    plt.plot(t,get_smooth(t,final_angles[:,6]))
+    plt.subplot(337)
+    plt.title("S1 Relative angle")
+    #plt.xlabel("Relative frame")
+    plt.ylabel("Angle (Degrees)")
+    plt.plot(t,get_smooth(t,final_rel_angles[:,0]))
+    plt.subplot(338)
+    plt.title("S2 Relative angle")
+    #plt.xlabel("Relative frame")
+    plt.ylabel("Angle (Degrees)")
+    plt.plot(t,get_smooth(t,final_rel_angles[:,1]))
+    plt.subplot(339)
+    plt.title("RLU Relative angle")
+    #plt.xlabel("Relative frame")
+    plt.ylabel("Angle (Degrees)")
+    plt.plot(t,get_smooth(t,final_rel_angles[:,2]))
+    #plt.tight_layout()
+    plt.savefig(folder_path+"/plot.png",dpi=100)
+    plt.show()
+    return final_limb,final_distance,final_angles,final_rel_angles
+
+
+#Fun: To get the statical parameters of the data
+def get_stats(data):
+    if type(data)!= "numpy.ndarray":
+       data=np.array(data)
+    min_value=np.min(data)
+    max_value=np.max(data)
+    sd_value=np.std(data)
+
+if __name__ == "__main__":
+    #Parsing the argument:
+    parser=argparse.ArgumentParser()
+    parser.add_argument("path1", type=str, help="Path contating the file: outputfile.py")
+    parser.add_argument("-p","--path2", type=str, help="Path contating the test file: outputfile.py")
+    args=parser.parse_args()
+
+    # Reading the reference File path and Loading
+    #folder_path = r"C:\Users\gaura\Desktop\TrainnerApp\Sprints\reule_squat2\Good4"
+    folder_path = args.path1
+    path = folder_path + r"\outputfile.npy"
+    try:
+        file = np.load(path)
+    except IOError:
+        sys.exit("Please check the path, file does not exist or can't be read!")
+    nb_frame1 = len(file)
+    print("frames in Good %d"%len(file))
+    assert nb_frame1 != 0 , "There are no frames in the file, Please check File!"
+
+
+    #Data generated
+    list_limb_vector=[]
+    list_distance=[]
+    list_angles=[]
+    list_rel_angles=[]
+    a,b,c,d= seq_data_generation(file,folder_path)
+    list_limb_vector.append(a)
+    list_distance.append(b)
+    list_angles.append(c)
+    list_rel_angles.append(d)
+
+    if args.path2!=None:
+
+        # Reading the test File path and Loading
+        #folder_path_test = r"C:\Users\gaura\Desktop\TrainnerApp\Sprints\reule_squat2\FaultKneeCaveln"
+        folder_path_test=args.path2
+        path_test = folder_path_test + r"\outputfile.npy"
+        try:
+            file_test = np.load(path_test)
+        except IOError:
+            sys.exit("Please check the path, file does not exist or can't be read!")
+        nb_frame2 = len(file_test)
+        print("frames in Test %d" % len(file_test))
+        assert nb_frame2 != 0, "There are no frames in the file, Please check File!"
+
+        a, b, c, d = seq_data_generation(file_test,folder_path_test)
+        list_limb_vector.append(a)
+        list_distance.append(b)
+        list_angles.append(c)
+        list_rel_angles.append(d)
+
+
+        #Testing DTW between bad and good (Just knee)
+        knee_ref  = np.array(list_angles[0][:,0])
+        knee_test = np.array(list_angles[1][:, 0])
+        t_ref=np.arange(0,len(knee_ref),1)
+        t_test = np.arange(0, len(knee_test), 1)
+        knee_smooth_ref = get_smooth(t_ref,knee_ref)
+        knee_smooth_test= get_smooth(t_test,knee_test)
+        # knee_smooth_ref = knee_ref
+        # knee_smooth_test= knee_test
+        print(knee_smooth_ref)
+        print(knee_smooth_test)
+        distance, path = fastdtw(knee_smooth_test, knee_smooth_ref, dist=euclidean)
+
+        #Sampling Test data to standardize to reference data
+        dir1 = my_directory()
+        for i in path:
+            dir1.add(i[1], i[0])
+        test_sampled=[]
+        for i in dir1:
+            test_sampled.append(dir1[i][-1])
+        test_sample_index=np.array(test_sampled)
+
+
+        #Visualizing Sampled Test data with reference data
+        ind=0
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        for j in test_sample_index:
+            x=j
+            y=knee_smooth_test[j]
+            y2=knee_smooth_ref[ind]
+            ax.scatter(ind+1, y, color='b')
+            ax.scatter(ind+1,y2,color='r')
+            ind +=1
+        ax.set_xlabel('frames')
+        ax.set_ylabel('knee Angles')
+        ax.set_title('scatter plot')
+        plt.show()
+
+
+        #Creating sampled parameter file for test as per reference
+        new_file_path = folder_path_test+"/sampled_outputfile.npy"
+        sampled_test=[]
+        for i in test_sample_index:
+            sampled_test.append(file_test[i])
+        sampled_test = np.array(sampled_test)
+        np.save(new_file_path,sampled_test)
+        print(len(sampled_test))
+
+
+        # Testing DTW between bad and good (Just knee Distance)
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        knee_ref = np.array(list_distance[0][:, 2])
+        knee_test = np.array(list_distance[1][:, 2])
+        t_ref = np.arange(0, len(knee_ref), 1)
+        t_test = np.arange(0, len(knee_test), 1)
+        knee_smooth_ref = get_smooth(t_ref, knee_ref)
+        knee_smooth_test = get_smooth(t_test, knee_test)
+        # knee_smooth_ref = knee_ref
+        # knee_smooth_test= knee_test
+        print(knee_smooth_ref)
+        print(knee_smooth_test)
+        for j in t_ref:
+            x = j
+            y = knee_smooth_ref[j]
+            ax.scatter(x, y, color='r')
+        for j in t_test:
+            x = j
+            y = knee_smooth_test[j]
+            ax.scatter(x, y, color='b')
+        ax.set_xlabel('frames')
+        ax.set_ylabel('knee distance')
+        ax.set_title('scatter plot')
+        plt.show()
+
+
+
+
+
+
